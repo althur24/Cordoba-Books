@@ -808,11 +808,12 @@ ul {
 }
 
 .price-promo {
-    font-size: 3.25rem;
+    font-size: clamp(2.25rem, 8vw, 3.25rem);
     font-weight: 800;
     color: var(--white);
     line-height: 1;
     margin-bottom: 0.5rem;
+    white-space: nowrap;
 }
 
 .price-original {
@@ -1333,6 +1334,33 @@ ul {
     
     .btn-lg {
         width: 100%;
+    }
+
+    /* Summary box mobile fixes */
+    .summary-total {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .summary-total-label {
+        font-size: 0.95rem;
+    }
+
+    .summary-total-value {
+        font-size: 1.25rem;
+    }
+
+    .summary-label {
+        font-size: 0.85rem;
+    }
+
+    .summary-value {
+        font-size: 0.9rem;
+    }
+
+    .summary-title {
+        font-size: 1rem;
     }
 }
 

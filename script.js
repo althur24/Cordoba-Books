@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // GANTI DENGAN NOMOR WA YANG BENAR NANTINYA (Format: 628XXXXXXXXXX)
-    const WA_NUMBER = "6281234567890"; // Placeholder
+    const WA_NUMBER = "6287842482817";
 
     if (orderForm) {
         orderForm.addEventListener('submit', function(e) {
