@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // === DELAY 2 DETIK agar event sempat tertrigger ===
             setTimeout(function() {
                 if (overlay) overlay.classList.remove('active');
-                window.open(waUrl, '_blank');
+                window.location.href = waUrl;
             }, 2000);
         });
     }
