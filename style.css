@@ -891,6 +891,44 @@ ul {
     margin-bottom: -24%;
 }
 
+/* Closing Motivational Quote */
+.closing-quote-section {
+    background:
+        url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='1'%3E%3Cpath d='M0 20h40M20 0v40M0 0l40 40M0 40l40-40'/%3E%3Crect x='10' y='10' width='20' height='20'/%3E%3Crect x='10' y='10' width='20' height='20' transform='rotate(45 20 20)'/%3E%3C/g%3E%3C/svg%3E"),
+        linear-gradient(135deg, var(--primary-dark), #0a2a4a);
+    padding: 5rem 1.5rem;
+}
+
+.closing-quote-inner {
+    max-width: 650px;
+    margin: 0 auto;
+}
+
+.closing-quote-text {
+    font-size: clamp(1.15rem, 4vw, 1.5rem);
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.95);
+    line-height: 1.7;
+    font-style: italic;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.01em;
+}
+
+.closing-quote-text em {
+    color: var(--gold-accent);
+    font-style: italic;
+    font-weight: 700;
+}
+
+.closing-quote-author {
+    display: inline-block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--gold-accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
 /* Order Arrow Section */
 .order-arrow-section {
     background-color: var(--light-blue);
