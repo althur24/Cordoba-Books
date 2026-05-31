@@ -248,4 +248,73 @@ function initPromoTimer() {
 if (document.getElementById('promo-timer')) {
     initPromoTimer();
 }
+
+// ============================================
+// 7. GOOGLE ANALYTICS — BEHAVIOR TRACKING
+// ============================================
+
+function gaEvent(name, params) {
+    if (typeof gtag !== 'undefined') {
+        gtag('event', name, params || {});
+    }
+}
+
+// --- A. SCROLL DEPTH (25%, 50%, 75%, 100%) ---
+// Alasan: Untuk tahu di titik mana pengunjung berhenti scroll (drop-off point)
+(function() {
+    const milestones = { 25: false, 50: false, 75: false, 100: false };
+
+    window.addEventListener('scroll', function() {
+        const scrollTop = window.pageYOffset;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        if (docHeight <= 0) return;
+        const percent = Math.round((scrollTop / docHeight) * 100);
+
+        [25, 50, 75, 100].forEach(function(m) {
+            if (percent >= m && !milestones[m]) {
+                milestones[m] = true;
+                gaEvent('scroll_depth', {
+                    event_category: 'Engagement',
+                    event_label: m + '%',
+                    value: m
+                });
+            }
+        });
+    });
+})();
+
+// --- B. SECTION VISIBILITY ---
+// Alasan: Tahu section mana yang benar-benar dilihat pengunjung (bukan sekadar dilewati)
+(function() {
+    const sections = {
+        'hero': 'Hero',
+        'penulis': 'Penulis',
+        'isi-buku': 'Isi Buku',
+        'quote': 'Quote Al-Quran',
+        'fitur-buku': 'Fitur Buku',
+        'promo': 'Promo & Harga',
+        'form-order': 'Form Pemesanan',
+        'faq': 'FAQ'
+    };
+
+    Object.keys(sections).forEach(function(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    gaEvent('section_view', {
+                        event_category: 'Engagement',
+                        event_label: sections[id]
+                    });
+                    observer.unobserve(el);
+                }
+            });
+        }, { threshold: 0.3 });
+
+        observer.observe(el);
+    });
+})();
+
 });
