@@ -144,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let jumlah = parseInt(jumlahVal);
             if (isNaN(jumlah) || jumlah < 1) jumlah = 1;
 
-            const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
             const totalHarga = formatRupiah(jumlah * BOOK_PRICE);
             
             // Validate (basic HTML5 validation handles most, but just in case)
@@ -163,8 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     content_name: 'Food & Life Balancing Ala Nabi',
                     quantity: jumlah,
                     value: jumlah * BOOK_PRICE,
-                    currency: 'IDR',
-                    payment_method: paymentMethod
+                    currency: 'IDR'
                 });
             }
             if (typeof gtag !== 'undefined') {
@@ -183,7 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
             message += `- Kota / Alamat Lengkap: ${alamat}\n\n`;
             message += `*Detail Pesanan:*\n`;
             message += `- Jumlah Pesanan: ${jumlah} Buku\n`;
-            message += `- Metode Pembayaran: ${paymentMethod}\n`;
             message += `- Estimasi Total: ${totalHarga} (Belum termasuk ongkir jika ada)\n\n`;
             message += `Mohon info selanjutnya ya. Terima kasih!`;
             
@@ -253,61 +250,44 @@ if (document.getElementById('promo-timer')) {
 // 7. GOOGLE ANALYTICS — BEHAVIOR TRACKING
 // ============================================
 
-function gaEvent(name, params) {
-    if (typeof gtag !== 'undefined') {
-        gtag('event', name, params || {});
-    }
-}
-
-// --- A. SCROLL DEPTH (25%, 50%, 75%, 100%) ---
-// Alasan: Untuk tahu di titik mana pengunjung berhenti scroll (drop-off point)
+// --- SCROLL DEPTH ---
 (function() {
-    const milestones = { 25: false, 50: false, 75: false, 100: false };
+    var fired = { 25: false, 50: false, 75: false, 100: false };
 
     window.addEventListener('scroll', function() {
-        const scrollTop = window.pageYOffset;
-        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        var scrollTop = window.pageYOffset;
+        var docHeight = document.documentElement.scrollHeight - window.innerHeight;
         if (docHeight <= 0) return;
-        const percent = Math.round((scrollTop / docHeight) * 100);
+        var percent = Math.round((scrollTop / docHeight) * 100);
 
-        [25, 50, 75, 100].forEach(function(m) {
-            if (percent >= m && !milestones[m]) {
-                milestones[m] = true;
-                gaEvent('scroll_depth', {
-                    event_category: 'Engagement',
-                    event_label: m + '%',
-                    value: m
-                });
-            }
-        });
+        if (percent >= 25 && !fired[25])  { fired[25] = true;  gtag('event', 'scroll_25'); }
+        if (percent >= 50 && !fired[50])  { fired[50] = true;  gtag('event', 'scroll_50'); }
+        if (percent >= 75 && !fired[75])  { fired[75] = true;  gtag('event', 'scroll_75'); }
+        if (percent >= 100 && !fired[100]) { fired[100] = true; gtag('event', 'scroll_100'); }
     });
 })();
 
-// --- B. SECTION VISIBILITY ---
-// Alasan: Tahu section mana yang benar-benar dilihat pengunjung (bukan sekadar dilewati)
+// --- SECTION VIEWS ---
 (function() {
-    const sections = {
-        'hero': 'Hero',
-        'penulis': 'Penulis',
-        'isi-buku': 'Isi Buku',
-        'quote': 'Quote Al-Quran',
-        'fitur-buku': 'Fitur Buku',
-        'promo': 'Promo & Harga',
-        'form-order': 'Form Pemesanan',
-        'faq': 'FAQ'
+    var tracked = {
+        'hero': 'view_hero',
+        'penulis': 'view_penulis',
+        'isi-buku': 'view_isi_buku',
+        'quote': 'view_quote',
+        'fitur-buku': 'view_fitur_buku',
+        'promo': 'view_promo',
+        'form-order': 'view_form',
+        'faq': 'view_faq'
     };
 
-    Object.keys(sections).forEach(function(id) {
-        const el = document.getElementById(id);
+    Object.keys(tracked).forEach(function(id) {
+        var el = document.getElementById(id);
         if (!el) return;
 
-        const observer = new IntersectionObserver(function(entries) {
+        var observer = new IntersectionObserver(function(entries) {
             entries.forEach(function(entry) {
                 if (entry.isIntersecting) {
-                    gaEvent('section_view', {
-                        event_category: 'Engagement',
-                        event_label: sections[id]
-                    });
+                    gtag('event', tracked[id]);
                     observer.unobserve(el);
                 }
             });
