@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
 
     // 3. Cek keyword order di body pesan
     const body = (payload.body || '').toLowerCase();
-    const keywords = ['food', 'life', 'balancing', 'nabi', 'pesanan', 'buku', 'ref: cb-'];
+    const keywords = ['food', 'life', 'balancing', 'nabi', 'pesanan', 'buku', 'kode diskon: cb-'];
     const isOrderMessage = keywords.some(kw => body.includes(kw));
 
     if (!isOrderMessage) {
@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
     const bodyRaw = payload.body || '';
     var fbc = '';
     var fbp = '';
-    var refMatch = bodyRaw.match(/Ref: CB-[0-9]+\|?([^|\n]*)\|?([^\n]*)/);
+    var refMatch = bodyRaw.match(/Kode Diskon: CB-[0-9]+\|?([^|\n]*)\|?([^\n]*)/);
     if (refMatch) {
         if (refMatch[1] && refMatch[1].startsWith('fb.')) fbc = refMatch[1];
         if (refMatch[2] && refMatch[2].startsWith('fb.')) fbp = refMatch[2];

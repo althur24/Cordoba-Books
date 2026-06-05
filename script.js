@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
             message += `*Detail Pesanan:*\n`;
             message += `- Jumlah Pesanan: ${jumlah} Buku\n`;
             message += `- Estimasi Total: ${totalHarga} (Belum termasuk ongkir jika ada)\n\n`;
-            message += `- Ref: CB-${Date.now()}${fbc ? '|' + fbc : ''}${fbp ? '|' + fbp : ''}\n\n`;
+            message += `- Kode Diskon: CB-${Date.now()}${fbc ? '|' + fbc : ''}${fbp ? '|' + fbp : ''}\n\n`;
             message += `Mohon info selanjutnya ya. Terima kasih!`;
             
             const encodedMessage = encodeURIComponent(message);
