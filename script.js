@@ -1,5 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
     
+    // 0. Capture fbclid from URL (untuk Facebook CAPI attribution)
+    var urlParams = new URLSearchParams(window.location.search);
+    var fbclid = urlParams.get('fbclid') || '';
+    var fbc = '';
+    if (fbclid) {
+        fbc = 'fb.1.' + Date.now() + '.' + fbclid;
+        document.cookie = '_fbc=' + fbc + '; max-age=7776000; path=/';
+    } else {
+        var match = document.cookie.match('_fbc=([^;]+)');
+        if (match) fbc = match[1];
+    }
+    // Ambil fbp dari cookie (dibuat otomatis oleh Facebook Pixel)
+    var fbpMatch = document.cookie.match('_fbp=([^;]+)');
+    var fbp = fbpMatch ? fbpMatch[1] : '';
+
     // 1. Sticky Header on Scroll
     const header = document.getElementById('main-header');
     
@@ -182,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
             message += `*Detail Pesanan:*\n`;
             message += `- Jumlah Pesanan: ${jumlah} Buku\n`;
             message += `- Estimasi Total: ${totalHarga} (Belum termasuk ongkir jika ada)\n\n`;
+            message += `- Ref: CB-${Date.now()}${fbc ? '|' + fbc : ''}${fbp ? '|' + fbp : ''}\n\n`;
             message += `Mohon info selanjutnya ya. Terima kasih!`;
             
             const encodedMessage = encodeURIComponent(message);
