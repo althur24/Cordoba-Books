@@ -29,13 +29,14 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, lead: false, reason: 'Own message ignored' });
     }
 
-    // 5. Cek keyword order di body pesan
-    const body = (payload.body || '').toLowerCase();
-    const keywords = ['food', 'life', 'balancing', 'nabi', 'pesanan', 'buku', 'kode diskon: cb-'];
-    const isOrderMessage = keywords.some(kw => body.includes(kw));
+    // 5. HANYA trigger kalau pesan mengandung "Kode Diskon: CB-"
+    // Kode ini hanya ada di pesan yang di-generate dari landing page
+    // Chat random / pesan biasa TIDAK akan ter-trigger
+    const bodyRaw = payload.body || '';
+    const isFromLandingPage = bodyRaw.includes('Kode Diskon: CB-');
 
-    if (!isOrderMessage) {
-        return res.status(200).json({ ok: true, lead: false, reason: 'Not an order message' });
+    if (!isFromLandingPage) {
+        return res.status(200).json({ ok: true, lead: false, reason: 'Not from landing page' });
     }
 
     // Ekstrak phone number dari WAHA (format: 628xxx@c.us)
@@ -46,21 +47,25 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'No phone number provided' });
     }
 
+    // 6. DEDUPLIKASI PERMANEN: cek apakah nomor ini sudah pernah tercatat
+    const isDuplicate = await checkAndSetLead(phone);
+    if (isDuplicate) {
+        return res.status(200).json({ ok: true, lead: false, reason: 'Duplicate lead - phone already recorded' });
+    }
+
     // Hash phone number (SHA-256) untuk Facebook CAPI
     const hashedPhone = crypto
         .createHash('sha256')
         .update(phone)
         .digest('hex');
 
-    // 6. Deduplikasi: buat event_id dari phone number
-    // Facebook akan ignore event dengan event_id yang sama dalam 48 jam
+    // Event ID untuk Facebook dedup
     const eventId = crypto
         .createHash('sha256')
         .update('lead_cbapi_' + phone)
         .digest('hex');
 
     // Ekstrak fbc dan fbp dari pesan WA (disisipkan di Kode Diskon line)
-    const bodyRaw = payload.body || '';
     var fbc = '';
     var fbp = '';
     var refMatch = bodyRaw.match(/Kode Diskon: CB-[0-9]+\|?([^|\n]*)\|?([^\n]*)/);
@@ -72,7 +77,7 @@ module.exports = async (req, res) => {
     let isSuccess = true;
     let errors = [];
 
-    // 7. Kirim ke Facebook CAPI (dengan event_id untuk deduplikasi)
+    // 7. Kirim ke Facebook CAPI
     try {
         await sendToFacebookCAPI(hashedPhone, payload, fbc, fbp, eventId);
     } catch (e) {
@@ -94,11 +99,46 @@ module.exports = async (req, res) => {
         ok: isSuccess, 
         lead: true,
         phone: phone,
-        eventId: eventId,
         errors: errors.length > 0 ? errors : undefined
     });
 };
 
+// ============================================
+// DEDUPLIKASI: Upstash Redis (gratis, permanen)
+// ============================================
+async function checkAndSetLead(phone) {
+    const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
+    const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    // Kalau Redis belum di-setup, skip deduplikasi (tetap kirim lead)
+    if (!REDIS_URL || !REDIS_TOKEN) {
+        console.warn('Upstash Redis not configured - skipping dedup');
+        return false;
+    }
+
+    const key = `lead:${phone}`;
+
+    try {
+        // Cek apakah nomor sudah ada di Redis
+        // SETNX = "Set if Not eXists" → return 1 jika baru, 0 jika sudah ada
+        const response = await fetch(`${REDIS_URL}/setnx/${key}/1`, {
+            headers: { Authorization: `Bearer ${REDIS_TOKEN}` }
+        });
+        const data = await response.json();
+        
+        // data.result === 1 → nomor baru (belum pernah tercatat)
+        // data.result === 0 → nomor sudah ada (duplikat)
+        return data.result === 0;
+    } catch (e) {
+        console.error('Redis dedup check failed:', e);
+        // Kalau Redis error, tetap proses lead (lebih baik double count daripada miss)
+        return false;
+    }
+}
+
+// ============================================
+// FACEBOOK CAPI
+// ============================================
 async function sendToFacebookCAPI(hashedPhone, payload, fbc, fbp, eventId) {
     const PIXEL_ID = process.env.PIXEL_ID;
     const ACCESS_TOKEN = process.env.CAPI_ACCESS_TOKEN;
@@ -143,6 +183,9 @@ async function sendToFacebookCAPI(hashedPhone, payload, fbc, fbp, eventId) {
     }
 }
 
+// ============================================
+// GOOGLE ANALYTICS
+// ============================================
 async function sendToGA(phone, eventId) {
     const GA_ID = process.env.GA_MEASUREMENT_ID;
     const GA_SECRET = process.env.GA_API_SECRET;
