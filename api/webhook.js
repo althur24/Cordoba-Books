@@ -18,7 +18,18 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, reason: 'Not a message event' });
     }
 
-    // 3. Cek keyword order di body pesan
+    // 3. Skip pesan dari group chat (format: xxx@g.us)
+    const fromId = payload.from || '';
+    if (fromId.includes('@g.us') || fromId.includes('@broadcast')) {
+        return res.status(200).json({ ok: true, lead: false, reason: 'Group/broadcast message ignored' });
+    }
+
+    // 4. Skip pesan yang dikirim oleh kita sendiri
+    if (payload.fromMe === true) {
+        return res.status(200).json({ ok: true, lead: false, reason: 'Own message ignored' });
+    }
+
+    // 5. Cek keyword order di body pesan
     const body = (payload.body || '').toLowerCase();
     const keywords = ['food', 'life', 'balancing', 'nabi', 'pesanan', 'buku', 'kode diskon: cb-'];
     const isOrderMessage = keywords.some(kw => body.includes(kw));
@@ -41,7 +52,14 @@ module.exports = async (req, res) => {
         .update(phone)
         .digest('hex');
 
-    // Ekstrak fbc dan fbp dari pesan WA (disisipkan di Ref line)
+    // 6. Deduplikasi: buat event_id dari phone number
+    // Facebook akan ignore event dengan event_id yang sama dalam 48 jam
+    const eventId = crypto
+        .createHash('sha256')
+        .update('lead_cbapi_' + phone)
+        .digest('hex');
+
+    // Ekstrak fbc dan fbp dari pesan WA (disisipkan di Kode Diskon line)
     const bodyRaw = payload.body || '';
     var fbc = '';
     var fbp = '';
@@ -54,18 +72,18 @@ module.exports = async (req, res) => {
     let isSuccess = true;
     let errors = [];
 
-    // 4. Kirim ke Facebook CAPI
+    // 7. Kirim ke Facebook CAPI (dengan event_id untuk deduplikasi)
     try {
-        await sendToFacebookCAPI(hashedPhone, payload, fbc, fbp);
+        await sendToFacebookCAPI(hashedPhone, payload, fbc, fbp, eventId);
     } catch (e) {
         console.error('Error sending to FB CAPI:', e);
         isSuccess = false;
         errors.push('FB CAPI Error: ' + e.message);
     }
 
-    // 5. Kirim ke Google Analytics
+    // 8. Kirim ke Google Analytics
     try {
-        await sendToGA(phone);
+        await sendToGA(phone, eventId);
     } catch (e) {
         console.error('Error sending to GA:', e);
         isSuccess = false;
@@ -75,12 +93,13 @@ module.exports = async (req, res) => {
     return res.status(200).json({ 
         ok: isSuccess, 
         lead: true,
-        phone: phone, // for debugging purposes
+        phone: phone,
+        eventId: eventId,
         errors: errors.length > 0 ? errors : undefined
     });
 };
 
-async function sendToFacebookCAPI(hashedPhone, payload, fbc, fbp) {
+async function sendToFacebookCAPI(hashedPhone, payload, fbc, fbp, eventId) {
     const PIXEL_ID = process.env.PIXEL_ID;
     const ACCESS_TOKEN = process.env.CAPI_ACCESS_TOKEN;
 
@@ -98,6 +117,7 @@ async function sendToFacebookCAPI(hashedPhone, payload, fbc, fbp) {
     const data = {
         data: [{
             event_name: 'Lead CBAPI',
+            event_id: eventId,
             event_time: Math.floor(Date.now() / 1000),
             action_source: 'website',
             user_data: userData,
@@ -123,7 +143,7 @@ async function sendToFacebookCAPI(hashedPhone, payload, fbc, fbp) {
     }
 }
 
-async function sendToGA(phone) {
+async function sendToGA(phone, eventId) {
     const GA_ID = process.env.GA_MEASUREMENT_ID;
     const GA_SECRET = process.env.GA_API_SECRET;
 
@@ -142,7 +162,8 @@ async function sendToGA(phone) {
                     name: 'Lead_CBAPI',
                     params: {
                         source: 'whatsapp',
-                        content: 'Food & Life Balancing Ala Nabi'
+                        content: 'Food & Life Balancing Ala Nabi',
+                        event_id: eventId
                     }
                 }]
             })
