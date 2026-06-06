@@ -197,8 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
             message += `*Detail Pesanan:*\n`;
             message += `- Jumlah Pesanan: ${jumlah} Buku\n`;
             message += `- Estimasi Total: ${totalHarga} (Belum termasuk ongkir jika ada)\n\n`;
-            message += `- Kode Diskon: CB-${Date.now()}${fbc ? '|' + fbc : ''}${fbp ? '|' + fbp : ''}\n\n`;
-            message += `Mohon info selanjutnya ya. Terima kasih!`;
+            message += `- Kode Diskon: CB-${Date.now()}\n`;
+            if (fbc || fbp) message += `- #${fbc ? fbc : '-'}${fbp ? '.' + fbp : ''}\n`;
+            message += `\nMohon info selanjutnya ya. Terima kasih!`;
             
             const encodedMessage = encodeURIComponent(message);
             const waUrl = `https://wa.me/${WA_NUMBER}?text=${encodedMessage}`;
@@ -286,14 +287,8 @@ if (document.getElementById('promo-timer')) {
 // --- SECTION VIEWS ---
 (function() {
     var tracked = {
-        'hero': 'view_hero',
-        'penulis': 'view_penulis',
-        'isi-buku': 'view_isi_buku',
-        'quote': 'view_quote',
-        'fitur-buku': 'view_fitur_buku',
         'promo': 'view_promo',
-        'form-order': 'view_form',
-        'faq': 'view_faq'
+        'form-order': 'view_form'
     };
 
     Object.keys(tracked).forEach(function(id) {
