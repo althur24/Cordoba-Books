@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-// 6. Promo Countdown Timer (Personalized 5 hours, resets at midnight)
+// 6. Promo Countdown Timer (Personalized 2 hours, resets at midnight)
 function initPromoTimer() {
     const hoursEl = document.getElementById('cd-hours');
     const minutesEl = document.getElementById('cd-minutes');
