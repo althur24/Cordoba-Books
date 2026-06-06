@@ -228,7 +228,7 @@ function initPromoTimer() {
 
     // If it's a new day or no data exists, start a fresh 5-hour timer
     if (savedDate !== todayString || !targetTime) {
-        targetTime = Date.now() + (5 * 60 * 60 * 1000); // 5 hours from now
+        targetTime = Date.now() + (2 * 60 * 60 * 1000); // 2 hours from now
         localStorage.setItem('cordobaPromoDate', todayString);
         localStorage.setItem('cordobaPromoTarget', targetTime);
     }
