@@ -123,6 +123,7 @@ async function sendToFacebookCAPI(hashedPhone, payload, fbc, fbp, eventId) {
             event_name: 'Lead CBAPI',
             event_id: eventId,
             event_time: Math.floor(Date.now() / 1000),
+            event_source_url: 'https://cordoba-books-ybg6.vercel.app/',
             action_source: 'website',
             user_data: userData,
             custom_data: {
