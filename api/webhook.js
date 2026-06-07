@@ -47,7 +47,9 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'No phone number provided' });
     }
 
-    // 6. Deduplikasi 48 jam via Facebook event_id (nomor yang sama = event_id sama)
+    // 6. Deduplikasi 1 Jam via Facebook event_id
+    // Membagi waktu saat ini dengan 3600000ms (1 jam), sehingga ID berubah tiap jam
+    const hourBlock = Math.floor(Date.now() / 3600000);
 
     // Hash phone number (SHA-256) untuk Facebook CAPI
     const hashedPhone = crypto
@@ -55,10 +57,10 @@ module.exports = async (req, res) => {
         .update(phone)
         .digest('hex');
 
-    // Event ID untuk Facebook dedup
+    // Event ID untuk Facebook dedup (Berubah tiap 1 jam untuk nomor yang sama)
     const eventId = crypto
         .createHash('sha256')
-        .update('lead_cbapi_' + phone)
+        .update('lead_cbapi_' + phone + '_' + hourBlock)
         .digest('hex');
 
     // Ekstrak fbc dan fbp dari pesan WA (disisipkan di Kode Diskon line)
