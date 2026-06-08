@@ -6,7 +6,6 @@
     <title>Admin Dashboard - Cordoba Books</title>
     <link rel="icon" type="image/png" href="Logo cordoba2.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         :root {
             --primary: #0F172A;
@@ -151,6 +150,7 @@
         }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
         .modal-title { font-weight: 600; font-size: 1.25rem; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
         .status-indicator {
             display: inline-flex; align-items: center; gap: 0.5rem;
             background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 999px;
@@ -184,7 +184,7 @@
                     <div class="input-password-wrap">
                         <input type="password" id="password" required autocomplete="current-password">
                         <button type="button" class="toggle-pwd" onclick="togglePassword('password', this)">
-                            <i class="ph ph-eye"></i>
+                            👁️
                         </button>
                     </div>
                 </div>
@@ -214,28 +214,28 @@
         <main class="main-content">
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon bg-yellow"><i class="ph ph-file-text"></i></div>
+                    <div class="stat-icon bg-yellow">📝</div>
                     <div class="stat-info">
                         <h3>Form Submitted (Lead)</h3>
                         <p id="stat-leads">0</p>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon bg-blue"><i class="ph ph-whatsapp-logo"></i></div>
+                    <div class="stat-icon bg-blue">💬</div>
                     <div class="stat-info">
                         <h3>WA Confirmed</h3>
                         <p id="stat-wa">0</p>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon bg-green"><i class="ph ph-check-circle"></i></div>
+                    <div class="stat-icon bg-green">✅</div>
                     <div class="stat-info">
                         <h3>Purchased</h3>
                         <p id="stat-purchased">0</p>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon bg-purple"><i class="ph ph-chart-line-up"></i></div>
+                    <div class="stat-icon bg-purple">📊</div>
                     <div class="stat-info">
                         <h3>Conversion Rate</h3>
                         <p id="stat-conv">0%</p>
@@ -246,7 +246,7 @@
             <div class="table-container">
                 <div class="table-header">
                     <h2>Data Leads Terbaru</h2>
-                    <button class="btn" style="width: auto; padding: 0.5rem 1rem;" onclick="loadData()"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
+                    <button class="btn" style="width: auto; padding: 0.5rem 1rem;" onclick="loadData()">🔄 Refresh</button>
                 </div>
                 <div style="overflow-x: auto;">
                     <table>
@@ -344,13 +344,12 @@
         // Fungsi Global
         function togglePassword(inputId, btn) {
             const input = document.getElementById(inputId);
-            const icon = btn.querySelector('i');
             if (input.type === 'password') {
                 input.type = 'text';
-                icon.className = 'ph ph-eye-slash';
+                btn.textContent = '🙈';
             } else {
                 input.type = 'password';
-                icon.className = 'ph ph-eye';
+                btn.textContent = '👁️';
             }
         }
 
@@ -391,6 +390,7 @@
                     document.getElementById('password').value = '';
                     showDashboard();
                     loadData();
+                    loadWahaStatus();
                 }
             } catch (e) {
                 err.innerText = e.message;
@@ -434,6 +434,11 @@
                     return;
                 }
                 
+                if (!res.ok) {
+                    console.error('loadData error:', res.status);
+                    return;
+                }
+                
                 const data = await res.json();
                 if (data.leads) {
                     renderTable(data.leads);
@@ -460,11 +465,11 @@
                 
                 let statusBadge = '';
                 if (lead.status === 'form_submitted') {
-                    statusBadge = '<span class="badge badge-warning"><i class="ph ph-file-text"></i> Form Submitted</span>';
+                    statusBadge = '<span class="badge badge-warning">📝 Form Submitted</span>';
                 } else if (lead.status === 'wa_confirmed') {
-                    statusBadge = '<span class="badge badge-info"><i class="ph ph-whatsapp-logo"></i> WA Confirmed</span>';
+                    statusBadge = '<span class="badge badge-info">💬 WA Confirmed</span>';
                 } else if (lead.status === 'purchased') {
-                    statusBadge = '<span class="badge badge-success"><i class="ph ph-check-circle"></i> Purchased</span>';
+                    statusBadge = '<span class="badge badge-success">✅ Purchased</span>';
                 }
 
                 tbody.innerHTML += `
@@ -508,11 +513,17 @@
                 const res = await fetch('/api/waha-status', {
                     headers: { 'Authorization': `Bearer ${sessionData.access_token}` }
                 });
-                const data = await res.json();
                 
                 const dot = document.getElementById('waha-dot');
                 const txt = document.getElementById('waha-text');
                 
+                if (!res.ok) {
+                    dot.className = 'dot error';
+                    txt.innerText = 'WA: Error ' + res.status;
+                    return;
+                }
+                
+                const data = await res.json();
                 dot.className = 'dot'; // reset
                 
                 if (data.status === 'WORKING') {
@@ -525,7 +536,7 @@
                     dot.classList.add('pending');
                     txt.innerText = 'WA Butuh Scan QR';
                 } else {
-                    txt.innerText = 'WA: ' + data.status;
+                    txt.innerText = 'WA: ' + (data.status || 'Unknown');
                 }
             } catch (e) {
                 console.error(e);

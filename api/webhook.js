@@ -5,8 +5,8 @@ module.exports = async (req, res) => {
         return res.status(405).end('Method Not Allowed');
     }
 
-    // 1. Validasi API key dari WAHA
-    const apiKey = req.headers['x-api-key'];
+    // 1. Validasi API key dari WAHA (dikirim via ?key=xxx di URL)
+    const apiKey = req.query.key || req.headers['x-api-key'];
     if (apiKey !== process.env.WAHA_API_KEY) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
