@@ -13,17 +13,21 @@ module.exports = async (req, res) => {
     const token = authHeader.split(' ')[1];
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+    const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-    if (!SUPABASE_URL || !SUPABASE_KEY) {
-        return res.status(500).json({ error: 'Server configuration error' });
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !SUPABASE_ANON_KEY) {
+        return res.status(500).json({ error: 'Server configuration error: missing keys' });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Client for verifying JWT (must use ANON KEY)
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Client for querying database bypassing RLS (must use SERVICE KEY)
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     try {
         // 1. Verify user JWT
-        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
         
         if (authError || !user) {
             return res.status(401).json({ error: 'Invalid or expired token' });
@@ -33,7 +37,7 @@ module.exports = async (req, res) => {
         // Parse query params for filtering
         const { status, from, to } = req.query;
         
-        let query = supabase
+        let query = supabaseAdmin
             .from('leads')
             .select('*')
             .order('created_at', { ascending: false });

@@ -2,14 +2,16 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = async (req, res) => {
     const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+    const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
     const WAHA_API_KEY = process.env.WAHA_API_KEY;
 
-    if (!SUPABASE_URL || !SUPABASE_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !SUPABASE_ANON_KEY) {
         return res.status(500).json({ error: 'Supabase credentials missing' });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // --- GET: Dipanggil oleh Admin Dashboard untuk mengecek status terakhir ---
     if (req.method === 'GET') {
@@ -18,13 +20,13 @@ module.exports = async (req, res) => {
             return res.status(401).json({ error: 'Missing or invalid token' });
         }
         const token = authHeader.split(' ')[1];
-        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
         if (authError || !user) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseAdmin
                 .from('waha_logs')
                 .select('status, created_at')
                 .order('created_at', { ascending: false })
@@ -62,7 +64,7 @@ module.exports = async (req, res) => {
             
             try {
                 // Simpan status baru ke tabel waha_logs
-                const { error } = await supabase
+                const { error } = await supabaseAdmin
                     .from('waha_logs')
                     .insert([
                         { status: status }
