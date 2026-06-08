@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             message += `*Detail Pesanan:*\n`;
             message += `- Jumlah Pesanan: ${jumlah} Buku\n`;
             message += `- Estimasi Total: ${totalHarga} (Belum termasuk ongkir jika ada)\n\n`;
-            message += `- Kode Pesanan: ${refCode}\n`;
+            message += `- Kode Diskon: ${refCode}\n`;
             message += `\nMohon info selanjutnya ya. Terima kasih!`;
             
             const encodedMessage = encodeURIComponent(message);

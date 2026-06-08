@@ -59,6 +59,12 @@ module.exports = async (req, res) => {
                     if (leads && leads.length > 0) {
                         const lead = leads[0];
                         
+                        // Cegah double purchase: skip jika sudah pernah purchased
+                        if (lead.status === 'purchased') {
+                            console.log(`#thanks ignored: lead ${lead.short_code} already purchased`);
+                            return res.status(200).json({ ok: true, reason: 'Already purchased', code: lead.short_code });
+                        }
+                        
                         // Hash phone (always use 62 format for consistency)
                         const phoneForHash = targetPhone.startsWith('0') ? '62' + targetPhone.slice(1) : targetPhone;
                         const hashedPhone = crypto.createHash('sha256').update(phoneForHash).digest('hex');
