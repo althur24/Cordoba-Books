@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const WA_NUMBER = "6287842482817";
 
     if (orderForm) {
-        orderForm.addEventListener('submit', function(e) {
+        orderForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             // Get form values
@@ -188,6 +188,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             
+            // Generate WhatsApp Reference Code
+            let refCode = '';
+            try {
+                // Try to save lead to Supabase via API
+                const response = await fetch('/api/lead', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nama: nama,
+                        whatsapp: whatsapp,
+                        alamat: alamat,
+                        jumlah: jumlah,
+                        fbc: fbc,
+                        fbp: fbp
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.shortCode) {
+                        refCode = `CB-${data.shortCode}`;
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to save lead via API:", err);
+            }
+            
+            // Fallback if API fails
+            if (!refCode) {
+                refCode = `CB-${Date.now()}${fbc ? '|' + fbc : ''}${fbp ? '|' + fbp : ''}`;
+            }
+
             // Create WhatsApp Message Template
             let message = `Halo, saya ingin mengkonfirmasi pesanan buku *Food & Life – Balancing Ala Nabi*.\n\nBerikut rincian pesanan saya:\n\n`;
             message += `*Data Pengiriman:*\n`;
@@ -197,17 +229,17 @@ document.addEventListener('DOMContentLoaded', () => {
             message += `*Detail Pesanan:*\n`;
             message += `- Jumlah Pesanan: ${jumlah} Buku\n`;
             message += `- Estimasi Total: ${totalHarga} (Belum termasuk ongkir jika ada)\n\n`;
-            message += `- Kode Diskon: CB-${Date.now()}${fbc ? '|' + fbc : ''}${fbp ? '|' + fbp : ''}\n`;
+            message += `- Kode Pesanan: ${refCode}\n`;
             message += `\nMohon info selanjutnya ya. Terima kasih!`;
             
             const encodedMessage = encodeURIComponent(message);
             const waUrl = `https://wa.me/${WA_NUMBER}?text=${encodedMessage}`;
             
-            // === DELAY 2 DETIK agar event sempat tertrigger ===
+            // === DELAY 1.5 DETIK agar event sempat tertrigger ===
             setTimeout(function() {
                 if (overlay) overlay.classList.remove('active');
                 window.location.href = waUrl;
-            }, 2000);
+            }, 1500);
         });
     }
 

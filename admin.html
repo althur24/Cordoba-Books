@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Cordoba Books</title>
+    <link rel="icon" type="image/png" href="Logo cordoba2.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --primary: #0F172A;
+            --primary-light: #1E293B;
+            --accent: #EAB308;
+            --accent-hover: #CA8A04;
+            --bg: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text-main: #0F172A;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+            --success: #10B981;
+            --info: #3B82F6;
+            --warning: #F59E0B;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        
+        body { background-color: var(--bg); color: var(--text-main); min-height: 100vh; }
+
+        /* Login Screen */
+        #login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            padding: 1rem;
+        }
+
+        .login-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .login-card img { width: 80px; margin-bottom: 1.5rem; }
+        .login-card h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .login-card p { color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.875rem; }
+
+        .form-group { margin-bottom: 1rem; text-align: left; }
+        .form-group label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; }
+        .form-group input { 
+            width: 100%; padding: 0.75rem 1rem; 
+            border: 1px solid var(--border); border-radius: 0.5rem; 
+            outline: none; transition: border-color 0.2s;
+        }
+        .form-group input:focus { border-color: var(--info); }
+        .input-password-wrap {
+            position: relative;
+        }
+        .input-password-wrap input { padding-right: 2.75rem; }
+        .toggle-pwd {
+            position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; color: var(--text-muted);
+            font-size: 1.25rem; display: flex; align-items: center;
+        }
+        .toggle-pwd:hover { color: var(--text-main); }
+
+        .btn {
+            display: inline-block; width: 100%; padding: 0.75rem 1rem;
+            background: var(--primary); color: white; border: none;
+            border-radius: 0.5rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; text-align: center;
+        }
+        .btn:hover { background: var(--primary-light); }
+        .btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        
+        #login-error { color: #EF4444; font-size: 0.875rem; margin-top: 1rem; display: none; }
+
+        /* Dashboard Screen */
+        #dashboard-screen { display: none; }
+        
+        .header {
+            background: var(--primary); color: white;
+            padding: 1rem 2rem; display: flex; justify-content: space-between;
+            align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .header-brand { display: flex; align-items: center; gap: 1rem; font-weight: 600; }
+        .header-brand img { height: 32px; filter: brightness(0) invert(1); }
+        .header-actions { display: flex; gap: 1rem; }
+        .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.3); }
+        .btn-outline:hover { background: rgba(255,255,255,0.1); }
+
+        .main-content { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem; margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--card-bg); padding: 1.5rem; border-radius: 0.75rem;
+            border: 1px solid var(--border); display: flex; align-items: center; gap: 1rem;
+        }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 0.5rem;
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+        }
+        .stat-info h3 { font-size: 0.875rem; color: var(--text-muted); font-weight: 500; }
+        .stat-info p { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; }
+
+        .bg-blue { background: #EFF6FF; color: var(--info); }
+        .bg-green { background: #ECFDF5; color: var(--success); }
+        .bg-yellow { background: #FEFCE8; color: var(--warning); }
+        .bg-purple { background: #FAF5FF; color: #9333EA; }
+
+        .table-container {
+            background: var(--card-bg); border-radius: 0.75rem; border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .table-header {
+            padding: 1.5rem; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .table-header h2 { font-size: 1.25rem; }
+        
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); }
+        th { background: #F8FAFC; font-weight: 600; font-size: 0.875rem; color: var(--text-muted); }
+        td { font-size: 0.875rem; }
+        
+        .badge {
+            display: inline-flex; align-items: center; padding: 0.25rem 0.75rem;
+            border-radius: 999px; font-size: 0.75rem; font-weight: 600; gap: 0.25rem;
+        }
+        .badge-warning { background: #FEF3C7; color: #B45309; }
+        .badge-info { background: #DBEAFE; color: #1D4ED8; }
+        .badge-success { background: #D1FAE5; color: #047857; }
+
+        /* Password Modal */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white; padding: 2rem; border-radius: 1rem; width: 100%; max-width: 400px;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .modal-title { font-weight: 600; font-size: 1.25rem; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+
+    </style>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen">
+        <div class="login-card">
+            <img src="Logo cordoba2.png" alt="Cordoba Books">
+            <h1>Admin Login</h1>
+            <p>Masukkan kredensial Anda untuk masuk</p>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="email" required placeholder="admin@cordobabooks.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-password-wrap">
+                        <input type="password" id="password" required autocomplete="current-password">
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('password', this)">
+                            <i class="ph ph-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn" id="login-btn">Masuk</button>
+                <div id="login-error">Email atau password salah</div>
+            </form>
+        </div>
+    </div>
+
+    <!-- DASHBOARD SCREEN -->
+    <div id="dashboard-screen">
+        <header class="header">
+            <div class="header-brand">
+                <img src="Logo cordoba2.png" alt="Cordoba Books">
+                Admin Dashboard
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="openPasswordModal()"><i class="ph ph-key"></i> Ganti Password</button>
+                <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="logout()"><i class="ph ph-sign-out"></i> Logout</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon bg-yellow"><i class="ph ph-file-text"></i></div>
+                    <div class="stat-info">
+                        <h3>Form Submitted (Lead)</h3>
+                        <p id="stat-leads">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-blue"><i class="ph ph-whatsapp-logo"></i></div>
+                    <div class="stat-info">
+                        <h3>WA Confirmed</h3>
+                        <p id="stat-wa">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-green"><i class="ph ph-check-circle"></i></div>
+                    <div class="stat-info">
+                        <h3>Purchased</h3>
+                        <p id="stat-purchased">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-purple"><i class="ph ph-chart-line-up"></i></div>
+                    <div class="stat-info">
+                        <h3>Conversion Rate</h3>
+                        <p id="stat-conv">0%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div class="table-header">
+                    <h2>Data Leads Terbaru</h2>
+                    <button class="btn" style="width: auto; padding: 0.5rem 1rem;" onclick="loadData()"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Kode</th>
+                                <th>Nama Lengkap</th>
+                                <th>WhatsApp</th>
+                                <th>Alamat</th>
+                                <th>Buku</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leads-body">
+                            <tr><td colspan="7" style="text-align: center; padding: 2rem;">Loading data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- CHANGE PASSWORD MODAL -->
+    <div class="modal" id="password-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Ganti Password</div>
+                <button class="close-btn" onclick="closePasswordModal()">&times;</button>
+            </div>
+            <form id="password-form">
+                <div class="form-group">
+                    <label>Password Baru</label>
+                    <div class="input-password-wrap">
+                        <input type="password" id="new-password" required minlength="6" autocomplete="new-password">
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('new-password', this)" title="Tampilkan Password">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn" id="save-pwd-btn">Simpan Password</button>
+                <div id="pwd-msg" style="margin-top: 1rem; font-size: 0.875rem;"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let supabaseClient = null;
+        let sessionData = null;
+
+        // Global error handler
+        window.onerror = function(msg, url, line, col, error) {
+            console.error("JS Error: " + msg + " Line: " + line);
+            return false;
+        };
+
+        const FALLBACK_SUPABASE_URL = 'https://qvrqndgulauhzyzrxepc.supabase.co';
+        const FALLBACK_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2cnFuZGd1bGF1aHp5enJ4ZXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4OTg3NjYsImV4cCI6MjA5NjQ3NDc2Nn0.ftEtn7VG6-7WikEXCVc63a4mPQ4D1TZep2Etg45TwDU';
+
+        async function initSupabase() {
+            let sbUrl = FALLBACK_SUPABASE_URL;
+            let sbKey = FALLBACK_SUPABASE_ANON_KEY;
+
+            try {
+                const res = await fetch('/api/config');
+                if (res.ok) {
+                    const config = await res.json();
+                    sbUrl = config.SUPABASE_URL || sbUrl;
+                    sbKey = config.SUPABASE_ANON_KEY || sbKey;
+                }
+            } catch (e) {
+                console.log("Using fallback config");
+            }
+
+            if (!window.supabase) {
+                document.getElementById('login-error').innerText = "Supabase SDK gagal dimuat. Matikan AdBlocker.";
+                document.getElementById('login-error').style.display = "block";
+                return;
+            }
+
+            supabaseClient = window.supabase.createClient(sbUrl, sbKey);
+                
+            const { data } = await supabaseClient.auth.getSession();
+            if (data && data.session) {
+                sessionData = data.session;
+                showDashboard();
+                loadData();
+            }
+        }
+
+        // Jalankan init
+        initSupabase();
+
+        // Fungsi Global
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'ph ph-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'ph ph-eye';
+            }
+        }
+
+        async function doLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('login-btn');
+            const err = document.getElementById('login-error');
+            
+            if (!email || !password) {
+                err.innerText = "Email dan password wajib diisi";
+                err.style.display = "block";
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Loading...";
+            err.style.display = "none";
+
+            if (!supabaseClient) {
+                err.innerText = "Sistem belum siap. Tunggu sebentar atau refresh.";
+                err.style.display = "block";
+                btn.disabled = false;
+                btn.innerText = "Masuk";
+                return;
+            }
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                
+                if (error) {
+                    err.innerText = error.message;
+                    err.style.display = "block";
+                    btn.disabled = false;
+                    btn.innerText = "Masuk";
+                } else {
+                    sessionData = data.session;
+                    document.getElementById('password').value = '';
+                    showDashboard();
+                    loadData();
+                }
+            } catch (e) {
+                err.innerText = e.message;
+                err.style.display = "block";
+                btn.disabled = false;
+                btn.innerText = "Masuk";
+            }
+        }
+
+        // Tangkap enter key di form
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault(); // Mencegah reload
+            doLogin();
+        });
+
+        async function logout() {
+            if (supabaseClient) await supabaseClient.auth.signOut();
+            sessionData = null;
+            document.getElementById('dashboard-screen').style.display = "none";
+            document.getElementById('login-screen').style.display = "flex";
+            document.getElementById('login-btn').disabled = false;
+            document.getElementById('login-btn').innerText = "Masuk";
+        }
+
+        function showDashboard() {
+            document.getElementById('login-screen').style.display = "none";
+            document.getElementById('dashboard-screen').style.display = "block";
+        }
+
+        // Load Data
+        async function loadData() {
+            if (!sessionData) return;
+            
+            try {
+                const res = await fetch('/api/admin-leads', {
+                    headers: { 'Authorization': `Bearer ${sessionData.access_token}` }
+                });
+                
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+                
+                const data = await res.json();
+                if (data.leads) {
+                    renderTable(data.leads);
+                    updateStats(data.leads);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderTable(leads) {
+            const tbody = document.getElementById('leads-body');
+            tbody.innerHTML = '';
+            
+            if (leads.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Belum ada data.</td></tr>';
+                return;
+            }
+
+            leads.forEach(lead => {
+                const date = new Date(lead.created_at).toLocaleString('id-ID', {
+                    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'
+                });
+                
+                let statusBadge = '';
+                if (lead.status === 'form_submitted') {
+                    statusBadge = '<span class="badge badge-warning"><i class="ph ph-file-text"></i> Form Submitted</span>';
+                } else if (lead.status === 'wa_confirmed') {
+                    statusBadge = '<span class="badge badge-info"><i class="ph ph-whatsapp-logo"></i> WA Confirmed</span>';
+                } else if (lead.status === 'purchased') {
+                    statusBadge = '<span class="badge badge-success"><i class="ph ph-check-circle"></i> Purchased</span>';
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${date}</td>
+                        <td style="font-family: monospace; font-weight: 600;">CB-${lead.short_code}</td>
+                        <td style="font-weight: 500;">${lead.nama}</td>
+                        <td><a href="https://wa.me/${lead.whatsapp}" target="_blank" style="color: var(--info); text-decoration: none;">${lead.whatsapp}</a></td>
+                        <td>${lead.alamat}</td>
+                        <td>${lead.jumlah}</td>
+                        <td>${statusBadge}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateStats(leads) {
+            const total = leads.length;
+            const wa = leads.filter(l => l.status === 'wa_confirmed' || l.status === 'purchased').length;
+            const purchased = leads.filter(l => l.status === 'purchased').length;
+            
+            document.getElementById('stat-leads').innerText = total;
+            document.getElementById('stat-wa').innerText = wa;
+            document.getElementById('stat-purchased').innerText = purchased;
+            
+            const conv = total > 0 ? Math.round((purchased / total) * 100) : 0;
+            document.getElementById('stat-conv').innerText = `${conv}%`;
+        }
+
+        // Auto refresh every 30s
+        setInterval(() => {
+            if (sessionData && document.getElementById('dashboard-screen').style.display === 'block') {
+                loadData();
+            }
+        }, 30000);
+
+        // Password Modal
+        function openPasswordModal() { 
+            document.getElementById('password-modal').classList.add('active'); 
+            document.getElementById('pwd-msg').innerText = '';
+            document.getElementById('new-password').value = '';
+        }
+        function closePasswordModal() { document.getElementById('password-modal').classList.remove('active'); }
+        
+        document.getElementById('password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newPwd = document.getElementById('new-password').value;
+            const btn = document.getElementById('save-pwd-btn');
+            const msg = document.getElementById('pwd-msg');
+            
+            btn.disabled = true;
+            btn.innerText = "Menyimpan...";
+            
+            const { data, error } = await supabaseClient.auth.updateUser({ password: newPwd });
+            
+            btn.disabled = false;
+            btn.innerText = "Simpan Password";
+            
+            if (error) {
+                msg.style.color = "#EF4444";
+                msg.innerText = error.message;
+            } else {
+                msg.style.color = "#10B981";
+                msg.innerText = "Password berhasil diubah!";
+                setTimeout(closePasswordModal, 1500);
+            }
+        });
+
+    </script>
+</body>
+</html>
