@@ -151,7 +151,15 @@
         }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
         .modal-title { font-weight: 600; font-size: 1.25rem; }
-        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+        .status-indicator {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 999px;
+            font-size: 0.875rem; font-weight: 600;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #9CA3AF; }
+        .dot.online { background: #10B981; box-shadow: 0 0 8px #10B981; }
+        .dot.error { background: #EF4444; box-shadow: 0 0 8px #EF4444; }
+        .dot.pending { background: #F59E0B; box-shadow: 0 0 8px #F59E0B; }
 
     </style>
     <!-- Supabase SDK -->
@@ -194,8 +202,12 @@
                 Admin Dashboard
             </div>
             <div class="header-actions">
-                <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="openPasswordModal()"><i class="ph ph-key"></i> Ganti Password</button>
-                <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="logout()"><i class="ph ph-sign-out"></i> Logout</button>
+                <div class="status-indicator" id="waha-status-ui" title="Status koneksi mesin WA otomatis">
+                    <div class="dot" id="waha-dot"></div>
+                    <span id="waha-text">Cek WA...</span>
+                </div>
+                <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="openPasswordModal()">🔒 Ganti Password</button>
+                <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="logout()">🚪 Logout</button>
             </div>
         </header>
 
@@ -322,6 +334,7 @@
                 sessionData = data.session;
                 showDashboard();
                 loadData();
+                loadWahaStatus();
             }
         }
 
@@ -485,8 +498,39 @@
         setInterval(() => {
             if (sessionData && document.getElementById('dashboard-screen').style.display === 'block') {
                 loadData();
+                loadWahaStatus();
             }
         }, 30000);
+
+        async function loadWahaStatus() {
+            if (!sessionData) return;
+            try {
+                const res = await fetch('/api/waha-status', {
+                    headers: { 'Authorization': `Bearer ${sessionData.access_token}` }
+                });
+                const data = await res.json();
+                
+                const dot = document.getElementById('waha-dot');
+                const txt = document.getElementById('waha-text');
+                
+                dot.className = 'dot'; // reset
+                
+                if (data.status === 'WORKING') {
+                    dot.classList.add('online');
+                    txt.innerText = 'WA Online';
+                } else if (data.status === 'FAILED' || data.status === 'STOPPED') {
+                    dot.classList.add('error');
+                    txt.innerText = 'WA Error / Terputus';
+                } else if (data.status === 'STARTING' || data.status === 'SCAN_QR_CODE') {
+                    dot.classList.add('pending');
+                    txt.innerText = 'WA Butuh Scan QR';
+                } else {
+                    txt.innerText = 'WA: ' + data.status;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
 
         // Password Modal
         function openPasswordModal() { 
