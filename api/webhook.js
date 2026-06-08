@@ -70,7 +70,7 @@ module.exports = async (req, res) => {
                         const hashedPhone = crypto.createHash('sha256').update(phoneForHash).digest('hex');
                         const eventId = `purchase_${lead.short_code || targetPhone}_${Math.floor(Date.now() / 1000)}`;
                         
-                        const purchaseValue = 149000;
+                        const purchaseValue = (lead.jumlah || 1) * 149000;
                         
                         // Send Purchase to FB CAPI
                         await sendToFacebookCAPI(hashedPhone, payload, lead.fbc, lead.fbp, eventId, 'Purchase', purchaseValue);
