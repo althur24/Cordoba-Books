@@ -435,7 +435,8 @@
                 }
                 
                 if (!res.ok) {
-                    console.error('loadData error:', res.status);
+                    const errBody = await res.text();
+                    console.error('loadData error:', res.status, errBody);
                     return;
                 }
                 
