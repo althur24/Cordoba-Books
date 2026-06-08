@@ -1,3 +1,5 @@
+const { createClient } = require('@supabase/supabase-js');
+
 module.exports = async (req, res) => {
     if (req.method !== 'GET') {
         return res.status(405).end('Method Not Allowed');
@@ -5,7 +7,7 @@ module.exports = async (req, res) => {
 
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return res.status(401).json({ error: 'Unauthorized: Missing token' });
     }
 
     const token = authHeader.split(' ')[1];
@@ -17,51 +19,40 @@ module.exports = async (req, res) => {
         return res.status(500).json({ error: 'Server configuration error' });
     }
 
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
     try {
-        // 1. Verify user JWT by fetching their profile
-        const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!userRes.ok) {
+        // 1. Verify user JWT
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        
+        if (authError || !user) {
             return res.status(401).json({ error: 'Invalid or expired token' });
-        }
-
-        const user = await userRes.json();
-        if (!user || !user.id) {
-            return res.status(401).json({ error: 'Unauthorized user' });
         }
 
         // 2. Fetch all leads using service role
         // Parse query params for filtering
         const { status, from, to } = req.query;
-        let queryStr = '?order=created_at.desc';
+        
+        let query = supabase
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false });
         
         if (status) {
-            queryStr += `&status=eq.${status}`;
+            query = query.eq('status', status);
         }
         
         if (from && to) {
-            queryStr += `&created_at=gte.${from}&created_at=lte.${to}`;
+            query = query.gte('created_at', from).lte('created_at', to);
         }
 
-        const leadsRes = await fetch(`${SUPABASE_URL}/rest/v1/leads${queryStr}`, {
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
-            }
-        });
+        const { data: leads, error: leadsError } = await query;
 
-        if (!leadsRes.ok) {
-            throw new Error(`Failed to fetch leads: ${await leadsRes.text()}`);
+        if (leadsError) {
+            throw new Error(`Failed to fetch leads: ${leadsError.message}`);
         }
 
-        const leads = await leadsRes.json();
-
-        return res.status(200).json({ leads: leads });
+        return res.status(200).json({ leads: leads || [] });
     } catch (error) {
         console.error("Admin leads error:", error);
         return res.status(500).json({ error: error.message });
