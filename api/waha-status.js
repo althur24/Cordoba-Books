@@ -1,77 +1,81 @@
-const { createClient } = require('@supabase/supabase-js');
-
 module.exports = async (req, res) => {
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
     const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
     const WAHA_API_KEY = process.env.WAHA_API_KEY;
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !SUPABASE_ANON_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
         return res.status(500).json({ error: 'Supabase credentials missing' });
     }
 
-    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const verifyKey = SUPABASE_ANON_KEY || SUPABASE_SERVICE_KEY;
 
-    // --- GET: Dipanggil oleh Admin Dashboard untuk mengecek status terakhir ---
+    // --- GET: Dashboard admin mengecek status WAHA terakhir ---
     if (req.method === 'GET') {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ error: 'Missing or invalid token' });
         }
         const token = authHeader.split(' ')[1];
-        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
-        if (authError || !user) {
+
+        // Verify JWT
+        const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: { 'apikey': verifyKey, 'Authorization': `Bearer ${token}` }
+        });
+        if (!userRes.ok) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
         try {
-            const { data, error } = await supabaseAdmin
-                .from('waha_logs')
-                .select('status, created_at')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
+            const dataRes = await fetch(`${SUPABASE_URL}/rest/v1/waha_logs?select=status,created_at&order=created_at.desc&limit=1`, {
+                headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}` }
+            });
 
-            if (error) {
-                // Jika error karena tabel belum ada atau kosong
+            if (!dataRes.ok) {
                 return res.status(200).json({ status: 'UNKNOWN', message: 'Belum ada data status' });
             }
 
-            return res.status(200).json({ 
-                status: data.status, 
-                last_update: data.created_at 
+            const rows = await dataRes.json();
+            if (!rows || rows.length === 0) {
+                return res.status(200).json({ status: 'UNKNOWN', message: 'Belum ada data status' });
+            }
+
+            return res.status(200).json({
+                status: rows[0].status,
+                last_update: rows[0].created_at
             });
         } catch (e) {
             return res.status(500).json({ error: e.message });
         }
     }
 
-    // --- POST: Dipanggil oleh WAHA webhook ketika ada perubahan status (session.status) ---
+    // --- POST: WAHA mengirim event session.status ---
     if (req.method === 'POST') {
         const { key } = req.query;
 
-        // Verifikasi kunci (opsional tapi sangat disarankan)
         if (WAHA_API_KEY && key !== WAHA_API_KEY) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
         const body = req.body;
-        
-        // Memastikan event yang masuk adalah session.status
+
         if (body.event === 'session.status') {
             const status = body.payload?.status || 'UNKNOWN';
-            
-            try {
-                // Simpan status baru ke tabel waha_logs
-                const { error } = await supabaseAdmin
-                    .from('waha_logs')
-                    .insert([
-                        { status: status }
-                    ]);
 
-                if (error) {
-                    console.error("Supabase insert error:", error);
+            try {
+                const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/waha_logs`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_SERVICE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+                    },
+                    body: JSON.stringify({ status: status })
+                });
+
+                if (!insertRes.ok) {
+                    const errText = await insertRes.text();
+                    console.error("Supabase insert error:", errText);
                     return res.status(500).json({ error: 'Database error' });
                 }
 
@@ -81,9 +85,8 @@ module.exports = async (req, res) => {
             }
         }
 
-        // Jika bukan event session.status, abaikan saja (biarkan webhook lain yang urus di webhook.js)
         return res.status(200).json({ message: 'Event diabaikan, bukan session.status' });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
-}
+};

@@ -1,5 +1,3 @@
-const { createClient } = require('@supabase/supabase-js');
-
 module.exports = async (req, res) => {
     if (req.method !== 'GET') {
         return res.status(405).end('Method Not Allowed');
@@ -16,47 +14,56 @@ module.exports = async (req, res) => {
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
     const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !SUPABASE_ANON_KEY) {
-        return res.status(500).json({ error: 'Server configuration error: missing keys' });
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+        return res.status(500).json({ error: 'Server config error', detail: 'Missing SUPABASE_URL or SUPABASE_SERVICE_KEY' });
     }
 
-    // Client for verifying JWT (must use ANON KEY)
-    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    // Client for querying database bypassing RLS (must use SERVICE KEY)
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
     try {
-        // 1. Verify user JWT
-        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
-        
-        if (authError || !user) {
-            return res.status(401).json({ error: 'Invalid or expired token' });
+        // 1. Verify user JWT via Supabase Auth REST API (uses ANON KEY)
+        const verifyKey = SUPABASE_ANON_KEY || SUPABASE_SERVICE_KEY;
+        const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: {
+                'apikey': verifyKey,
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!userRes.ok) {
+            const errText = await userRes.text();
+            return res.status(401).json({ error: 'Invalid or expired token', detail: errText });
         }
 
-        // 2. Fetch all leads using service role
-        // Parse query params for filtering
+        const user = await userRes.json();
+        if (!user || !user.id) {
+            return res.status(401).json({ error: 'Unauthorized user' });
+        }
+
+        // 2. Fetch leads using SERVICE KEY (bypasses RLS)
         const { status, from, to } = req.query;
-        
-        let query = supabaseAdmin
-            .from('leads')
-            .select('*')
-            .order('created_at', { ascending: false });
+        let queryStr = '?select=*&order=created_at.desc';
         
         if (status) {
-            query = query.eq('status', status);
+            queryStr += `&status=eq.${status}`;
         }
-        
         if (from && to) {
-            query = query.gte('created_at', from).lte('created_at', to);
+            queryStr += `&created_at=gte.${from}&created_at=lte.${to}`;
         }
 
-        const { data: leads, error: leadsError } = await query;
+        const leadsRes = await fetch(`${SUPABASE_URL}/rest/v1/leads${queryStr}`, {
+            headers: {
+                'apikey': SUPABASE_SERVICE_KEY,
+                'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+            }
+        });
 
-        if (leadsError) {
-            throw new Error(`Failed to fetch leads: ${leadsError.message}`);
+        if (!leadsRes.ok) {
+            const errText = await leadsRes.text();
+            return res.status(500).json({ error: 'Failed to fetch leads', detail: errText });
         }
 
+        const leads = await leadsRes.json();
         return res.status(200).json({ leads: leads || [] });
+
     } catch (error) {
         console.error("Admin leads error:", error);
         return res.status(500).json({ error: error.message });
