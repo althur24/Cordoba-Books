@@ -30,6 +30,17 @@ module.exports = async (req, res) => {
 
     const bodyRaw = payload.body || '';
     
+    // DEBUG: Log semua field penting untuk troubleshoot
+    console.log('WEBHOOK DEBUG:', JSON.stringify({
+        event,
+        fromMe: payload.fromMe,
+        from: fromId,
+        to: toId,
+        chatId: payload.chatId,
+        body: bodyRaw.substring(0, 100),
+        hasThanks: bodyRaw.includes('#thanks')
+    }));
+    
     // ==========================================
     // SCENARIO 1: ADMIN SENDS #thanks (PURCHASE)
     // ==========================================
