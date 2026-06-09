@@ -16,8 +16,8 @@ module.exports = async (req, res) => {
 
     const { event, payload } = req.body;
     
-    // 2. Hanya proses event 'message'
-    if (event !== 'message') {
+    // 2. Hanya proses event 'message' atau 'message.any'
+    if (event !== 'message' && event !== 'message.any') {
         return res.status(200).json({ ok: true, reason: 'Not a message event' });
     }
 
