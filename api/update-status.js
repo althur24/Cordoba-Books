@@ -100,7 +100,7 @@ module.exports = async (req, res) => {
             // Send to Facebook CAPI
             if (PIXEL_ID && ACCESS_TOKEN) {
                 try {
-                    await fetch(`https://graph.facebook.com/v18.0/${PIXEL_ID}/events?access_token=${ACCESS_TOKEN}`, {
+                    const fbRes = await fetch(`https://graph.facebook.com/v18.0/${PIXEL_ID}/events?access_token=${ACCESS_TOKEN}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -126,9 +126,13 @@ module.exports = async (req, res) => {
                             }]
                         })
                     });
+                    const fbData = await fbRes.json();
+                    console.log('FB CAPI manual Purchase response:', JSON.stringify(fbData));
                 } catch (e) {
                     console.error('FB CAPI manual error:', e);
                 }
+            } else {
+                console.log('FB CAPI skipped: missing PIXEL_ID or ACCESS_TOKEN');
             }
 
             // Send to Google Analytics
