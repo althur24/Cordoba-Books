@@ -562,7 +562,12 @@
                 tr.innerHTML = `
                     <td>${date}</td>
                     <td style="font-family: monospace; font-weight: 600;">CB-${esc(lead.short_code)}</td>
-                    <td style="font-weight: 500;">${esc(lead.nama)}</td>
+                    <td>
+                        <div class="flex-cell" style="align-items: center;">
+                            <span style="font-weight: 500; white-space: nowrap;">${esc(lead.nama)}</span>
+                            <button class="copy-btn" data-copy="${esc(lead.nama)}" title="Copy nama" style="margin: 0;">📋</button>
+                        </div>
+                    </td>
                     <td>
                         <div class="flex-cell" style="align-items: center;">
                             <a href="https://wa.me/${esc(lead.whatsapp)}" target="_blank" style="color: var(--info); text-decoration: none; white-space: nowrap;">${esc(lead.whatsapp)}</a>
