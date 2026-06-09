@@ -144,7 +144,10 @@
         
         .address-text {
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-            line-height: 1.4; color: var(--text-main); flex: 1;
+            line-height: 1.4; color: var(--text-main); flex: 1; transition: all 0.3s;
+        }
+        .address-text.expanded {
+            display: block; -webkit-line-clamp: unset;
         }
         .flex-cell { display: flex; gap: 0.5rem; align-items: flex-start; }
         
@@ -322,10 +325,11 @@
                                 <th>Buku</th>
                                 <th>Status</th>
                                 <th>Aksi</th>
+                                <th style="text-align: center;">Proses</th>
                             </tr>
                         </thead>
                         <tbody id="leads-body">
-                            <tr><td colspan="8" style="text-align: center; padding: 2rem;">Loading data...</td></tr>
+                            <tr><td colspan="9" style="text-align: center; padding: 2rem;">Loading data...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -518,7 +522,7 @@
             tbody.innerHTML = '';
             
             if (leads.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Belum ada data.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">Belum ada data.</td></tr>';
                 return;
             }
 
@@ -567,25 +571,48 @@
                     </td>
                     <td>
                         <div class="flex-cell">
-                            <span class="address-text" title="${esc(lead.alamat)}">${esc(lead.alamat)}</span>
-                            <button class="copy-btn" data-copy="${esc(lead.alamat)}" title="Copy alamat" style="margin: 0; flex-shrink: 0;">📋</button>
+                            <span class="address-text" id="addr-${lead.id}" title="${esc(lead.alamat)}">${esc(lead.alamat)}</span>
+                            <div style="display: flex; flex-direction: column; gap: 0.25rem; flex-shrink: 0;">
+                                <button class="copy-btn" data-copy="${esc(lead.alamat)}" title="Copy alamat" style="margin: 0;">📋</button>
+                                <button class="copy-btn" onclick="toggleAddress('${lead.id}')" title="Lihat lengkap" style="margin: 0;">👁️</button>
+                            </div>
                         </div>
                     </td>
                     <td>${lead.jumlah}</td>
                     <td>${statusBadge}</td>
                     <td class="status-actions">${actionBtns}</td>
+                    <td style="text-align: center; vertical-align: middle;">
+                        <input type="checkbox" class="process-check" data-id="${lead.id}" style="width: 1.25rem; height: 1.25rem; cursor: pointer;">
+                    </td>
                 `;
 
                 // Attach event listeners safely (no inline onclick)
-                tr.querySelectorAll('.copy-btn').forEach(btn => {
+                tr.querySelectorAll('.copy-btn[data-copy]').forEach(btn => {
                     btn.addEventListener('click', () => copyText(btn.dataset.copy, btn));
                 });
                 tr.querySelectorAll('.btn-sm[data-lead-id]').forEach(btn => {
                     btn.addEventListener('click', () => updateLeadStatus(btn.dataset.leadId, btn.dataset.newStatus, btn));
                 });
+                
+                // Set initial checkbox state
+                const checkbox = tr.querySelector('.process-check');
+                const isProcessed = localStorage.getItem(`processed_${lead.id}`) === 'true';
+                checkbox.checked = isProcessed;
+                
+                // Add event listener to save state
+                checkbox.addEventListener('change', (e) => {
+                    localStorage.setItem(`processed_${lead.id}`, e.target.checked);
+                });
 
                 tbody.appendChild(tr);
             });
+        }
+        
+        function toggleAddress(id) {
+            const el = document.getElementById(`addr-${id}`);
+            if (el) {
+                el.classList.toggle('expanded');
+            }
         }
 
         function updateStats(leads) {
