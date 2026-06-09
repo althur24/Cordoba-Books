@@ -126,10 +126,19 @@
         }
         .table-header h2 { font-size: 1.25rem; }
         
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th, td { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); }
-        th { background: #F8FAFC; font-weight: 600; font-size: 0.875rem; color: var(--text-muted); }
-        td { font-size: 0.875rem; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; }
+        th, td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+        th { 
+            background: #F8FAFC; font-weight: 600; font-size: 0.875rem; color: var(--text-muted); 
+            position: sticky; top: 0; z-index: 10; border-top: 1px solid var(--border);
+        }
+        td { font-size: 0.875rem; vertical-align: middle; }
+        tbody tr { transition: background-color 0.2s; }
+        tbody tr:hover { background-color: #F1F5F9; }
+        
+        /* Column specifics */
+        th:nth-child(6), td:nth-child(6) { text-align: center; } /* Kolom Buku */
+        td:nth-child(5) { max-width: 250px; line-height: 1.4; } /* Kolom Alamat biar gak terlalu panjang */
         
         .badge {
             display: inline-flex; align-items: center; justify-content: center; padding: 0.35rem 0.75rem;
