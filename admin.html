@@ -139,6 +139,42 @@
         .badge-info { background: #DBEAFE; color: #1D4ED8; }
         .badge-success { background: #D1FAE5; color: #047857; }
 
+        /* Copy button */
+        .copy-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            background: none; border: 1px solid var(--border); border-radius: 0.375rem;
+            cursor: pointer; padding: 0.2rem 0.4rem; margin-left: 0.4rem;
+            font-size: 0.75rem; color: var(--text-muted); transition: all 0.2s;
+            vertical-align: middle;
+        }
+        .copy-btn:hover { background: #F1F5F9; color: var(--text-main); border-color: var(--info); }
+        .copy-btn.copied { background: #D1FAE5; color: #047857; border-color: #10B981; }
+
+        /* Copy toast */
+        .copy-toast {
+            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: var(--primary); color: white; padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 9999;
+            transition: transform 0.3s ease; pointer-events: none;
+        }
+        .copy-toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* Status action buttons */
+        .status-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+        .btn-sm {
+            display: inline-flex; align-items: center; gap: 0.25rem;
+            padding: 0.3rem 0.6rem; border-radius: 0.375rem; font-size: 0.7rem;
+            font-weight: 600; border: 1px solid var(--border); background: white;
+            cursor: pointer; transition: all 0.2s; white-space: nowrap;
+        }
+        .btn-sm:hover { background: #F1F5F9; }
+        .btn-sm.btn-purchase { border-color: #10B981; color: #047857; }
+        .btn-sm.btn-purchase:hover { background: #ECFDF5; }
+        .btn-sm.btn-confirm { border-color: #3B82F6; color: #1D4ED8; }
+        .btn-sm.btn-confirm:hover { background: #EFF6FF; }
+        .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
+
         /* Password Modal */
         .modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -259,10 +295,11 @@
                                 <th>Alamat</th>
                                 <th>Buku</th>
                                 <th>Status</th>
+                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="leads-body">
-                            <tr><td colspan="7" style="text-align: center; padding: 2rem;">Loading data...</td></tr>
+                            <tr><td colspan="8" style="text-align: center; padding: 2rem;">Loading data...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -455,7 +492,7 @@
             tbody.innerHTML = '';
             
             if (leads.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Belum ada data.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Belum ada data.</td></tr>';
                 return;
             }
 
@@ -473,17 +510,39 @@
                     statusBadge = '<span class="badge badge-success">✅ Purchased</span>';
                 }
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${date}</td>
-                        <td style="font-family: monospace; font-weight: 600;">CB-${lead.short_code}</td>
-                        <td style="font-weight: 500;">${lead.nama}</td>
-                        <td><a href="https://wa.me/${lead.whatsapp}" target="_blank" style="color: var(--info); text-decoration: none;">${lead.whatsapp}</a></td>
-                        <td>${lead.alamat}</td>
-                        <td>${lead.jumlah}</td>
-                        <td>${statusBadge}</td>
-                    </tr>
+                // Action buttons based on current status
+                let actionBtns = '';
+                if (lead.status === 'form_submitted') {
+                    actionBtns = `
+                        <button class="btn-sm btn-confirm" onclick="updateLeadStatus('${lead.id}', 'wa_confirmed', this)">💬 Confirm</button>
+                        <button class="btn-sm btn-purchase" onclick="updateLeadStatus('${lead.id}', 'purchased', this)">✅ Purchase</button>
+                    `;
+                } else if (lead.status === 'wa_confirmed') {
+                    actionBtns = `
+                        <button class="btn-sm btn-purchase" onclick="updateLeadStatus('${lead.id}', 'purchased', this)">✅ Purchase</button>
+                    `;
+                } else {
+                    actionBtns = '<span style="color: var(--text-muted); font-size: 0.75rem;">—</span>';
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${date}</td>
+                    <td style="font-family: monospace; font-weight: 600;">CB-${lead.short_code}</td>
+                    <td style="font-weight: 500;">${lead.nama}</td>
+                    <td>
+                        <a href="https://wa.me/${lead.whatsapp}" target="_blank" style="color: var(--info); text-decoration: none;">${lead.whatsapp}</a>
+                        <button class="copy-btn" onclick="copyText('${lead.whatsapp}', this)" title="Copy nomor">📋</button>
+                    </td>
+                    <td>
+                        <span>${lead.alamat}</span>
+                        <button class="copy-btn" onclick="copyText('${lead.alamat.replace(/'/g, "\\'") }', this)" title="Copy alamat">📋</button>
+                    </td>
+                    <td>${lead.jumlah}</td>
+                    <td>${statusBadge}</td>
+                    <td class="status-actions">${actionBtns}</td>
                 `;
+                tbody.appendChild(tr);
             });
         }
 
@@ -575,6 +634,81 @@
                 setTimeout(closePasswordModal, 1500);
             }
         });
+
+        // === COPY TO CLIPBOARD ===
+        function copyText(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                btn.classList.add('copied');
+                btn.textContent = '✅';
+                showToast('Berhasil disalin: ' + text);
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.textContent = '📋';
+                }, 1500);
+            }).catch(() => {
+                // Fallback for older browsers
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('Berhasil disalin: ' + text);
+            });
+        }
+
+        function showToast(msg) {
+            let toast = document.getElementById('copy-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'copy-toast';
+                toast.className = 'copy-toast';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // === MANUAL STATUS UPDATE ===
+        async function updateLeadStatus(leadId, newStatus, btn) {
+            if (!sessionData) return;
+
+            const statusLabels = { 'wa_confirmed': 'WA Confirmed', 'purchased': 'Purchased' };
+            const label = statusLabels[newStatus] || newStatus;
+
+            if (!confirm(`Ubah status lead ini menjadi "${label}"?\n\nJika purchased, event Purchase juga akan dikirim ke Facebook & GA.`)) {
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '⏳';
+
+            try {
+                const res = await fetch('/api/update-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionData.access_token}`
+                    },
+                    body: JSON.stringify({ leadId, newStatus })
+                });
+
+                if (res.ok) {
+                    showToast(`Status berhasil diubah ke ${label}!`);
+                    loadData(); // Refresh table
+                } else {
+                    const err = await res.json();
+                    alert('Gagal update: ' + (err.error || 'Unknown error'));
+                    btn.disabled = false;
+                    btn.textContent = label;
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = label;
+            }
+        }
 
     </script>
 </body>
