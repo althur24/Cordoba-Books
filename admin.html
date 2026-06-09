@@ -126,11 +126,13 @@
         }
         .table-header h2 { font-size: 1.25rem; }
         
-        table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
         th, td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
         th { 
             background: #F8FAFC; font-weight: 600; font-size: 0.875rem; color: var(--text-muted); 
-            position: sticky; top: 0; z-index: 10; border-top: 1px solid var(--border);
+            position: sticky; top: 0; z-index: 10; 
+            box-shadow: 0 1px 0 var(--border), 0 -1px 0 var(--border);
+            border-bottom: none; /* replaced by box-shadow for sticky */
         }
         td { font-size: 0.875rem; vertical-align: top; padding-top: 1.25rem; }
         tbody tr { transition: background-color 0.2s; }
