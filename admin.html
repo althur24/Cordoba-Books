@@ -317,6 +317,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th style="width: 50px; text-align: center;">No.</th>
                                 <th>Tanggal</th>
                                 <th>Kode</th>
                                 <th>Nama Lengkap</th>
@@ -329,9 +330,12 @@
                             </tr>
                         </thead>
                         <tbody id="leads-body">
-                            <tr><td colspan="9" style="text-align: center; padding: 2rem;">Loading data...</td></tr>
+                            <tr><td colspan="10" style="text-align: center; padding: 2rem;">Loading data...</td></tr>
                         </tbody>
                     </table>
+                </div>
+                <div id="load-more-container" style="text-align: center; padding: 1.5rem; border-top: 1px solid var(--border); display: none;">
+                    <button class="btn btn-outline" style="color: var(--text-main); border-color: var(--border);" onclick="loadMore()">⬇️ Tampilkan Lebih Banyak</button>
                 </div>
             </div>
         </main>
@@ -487,6 +491,9 @@
             document.getElementById('dashboard-screen').style.display = "block";
         }
 
+        let allLeads = [];
+        let currentDisplayCount = 10;
+
         // Load Data
         async function loadData() {
             if (!sessionData) return;
@@ -509,27 +516,45 @@
                 
                 const data = await res.json();
                 if (data.leads) {
-                    renderTable(data.leads);
-                    updateStats(data.leads);
+                    allLeads = data.leads;
+                    currentDisplayCount = 10; // reset
+                    updateStats(allLeads);
+                    renderTable();
                 }
             } catch (e) {
                 console.error(e);
             }
         }
+        
+        function loadMore() {
+            currentDisplayCount += 10;
+            renderTable();
+        }
 
-        function renderTable(leads) {
+        function renderTable() {
             const tbody = document.getElementById('leads-body');
+            const loadMoreBtn = document.getElementById('load-more-container');
             tbody.innerHTML = '';
             
-            if (leads.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">Belum ada data.</td></tr>';
+            if (allLeads.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Belum ada data.</td></tr>';
+                loadMoreBtn.style.display = 'none';
                 return;
+            }
+
+            // Get subset for pagination
+            const displayLeads = allLeads.slice(0, currentDisplayCount);
+            
+            if (allLeads.length > currentDisplayCount) {
+                loadMoreBtn.style.display = 'block';
+            } else {
+                loadMoreBtn.style.display = 'none';
             }
 
             // Escape HTML to prevent XSS
             const esc = (str) => String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-            leads.forEach(lead => {
+            displayLeads.forEach((lead, index) => {
                 const date = new Date(lead.created_at).toLocaleString('id-ID', {
                     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'
                 });
@@ -560,6 +585,7 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td style="text-align: center; font-weight: 600; color: var(--text-muted);">${index + 1}</td>
                     <td>${date}</td>
                     <td style="font-family: monospace; font-weight: 600;">CB-${esc(lead.short_code)}</td>
                     <td>
