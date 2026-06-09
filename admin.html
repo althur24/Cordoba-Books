@@ -496,6 +496,9 @@
                 return;
             }
 
+            // Escape HTML to prevent XSS
+            const esc = (str) => String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
             leads.forEach(lead => {
                 const date = new Date(lead.created_at).toLocaleString('id-ID', {
                     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'
@@ -514,12 +517,12 @@
                 let actionBtns = '';
                 if (lead.status === 'form_submitted') {
                     actionBtns = `
-                        <button class="btn-sm btn-confirm" onclick="updateLeadStatus('${lead.id}', 'wa_confirmed', this)">💬 Confirm</button>
-                        <button class="btn-sm btn-purchase" onclick="updateLeadStatus('${lead.id}', 'purchased', this)">✅ Purchase</button>
+                        <button class="btn-sm btn-confirm" data-lead-id="${lead.id}" data-new-status="wa_confirmed">💬 Confirm</button>
+                        <button class="btn-sm btn-purchase" data-lead-id="${lead.id}" data-new-status="purchased">✅ Purchase</button>
                     `;
                 } else if (lead.status === 'wa_confirmed') {
                     actionBtns = `
-                        <button class="btn-sm btn-purchase" onclick="updateLeadStatus('${lead.id}', 'purchased', this)">✅ Purchase</button>
+                        <button class="btn-sm btn-purchase" data-lead-id="${lead.id}" data-new-status="purchased">✅ Purchase</button>
                     `;
                 } else {
                     actionBtns = '<span style="color: var(--text-muted); font-size: 0.75rem;">—</span>';
@@ -528,20 +531,29 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${date}</td>
-                    <td style="font-family: monospace; font-weight: 600;">CB-${lead.short_code}</td>
-                    <td style="font-weight: 500;">${lead.nama}</td>
+                    <td style="font-family: monospace; font-weight: 600;">CB-${esc(lead.short_code)}</td>
+                    <td style="font-weight: 500;">${esc(lead.nama)}</td>
                     <td>
-                        <a href="https://wa.me/${lead.whatsapp}" target="_blank" style="color: var(--info); text-decoration: none;">${lead.whatsapp}</a>
-                        <button class="copy-btn" onclick="copyText('${lead.whatsapp}', this)" title="Copy nomor">📋</button>
+                        <a href="https://wa.me/${esc(lead.whatsapp)}" target="_blank" style="color: var(--info); text-decoration: none;">${esc(lead.whatsapp)}</a>
+                        <button class="copy-btn" data-copy="${esc(lead.whatsapp)}" title="Copy nomor">📋</button>
                     </td>
                     <td>
-                        <span>${lead.alamat}</span>
-                        <button class="copy-btn" onclick="copyText('${lead.alamat.replace(/'/g, "\\'") }', this)" title="Copy alamat">📋</button>
+                        <span>${esc(lead.alamat)}</span>
+                        <button class="copy-btn" data-copy="${esc(lead.alamat)}" title="Copy alamat">📋</button>
                     </td>
                     <td>${lead.jumlah}</td>
                     <td>${statusBadge}</td>
                     <td class="status-actions">${actionBtns}</td>
                 `;
+
+                // Attach event listeners safely (no inline onclick)
+                tr.querySelectorAll('.copy-btn').forEach(btn => {
+                    btn.addEventListener('click', () => copyText(btn.dataset.copy, btn));
+                });
+                tr.querySelectorAll('.btn-sm[data-lead-id]').forEach(btn => {
+                    btn.addEventListener('click', () => updateLeadStatus(btn.dataset.leadId, btn.dataset.newStatus, btn));
+                });
+
                 tbody.appendChild(tr);
             });
         }
