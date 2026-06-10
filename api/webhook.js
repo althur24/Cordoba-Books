@@ -167,7 +167,30 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, lead: false, reason: 'Not from landing page' });
     }
 
-    const phone = fromId.replace('@c.us', '');
+    // === RESOLVE REAL PHONE NUMBER ===
+    let phone = fromId.replace('@c.us', '').replace('@s.whatsapp.net', '');
+    
+    // If fromId is @lid format, resolve via WAHA API
+    if (fromId.includes('@lid')) {
+        const WAHA_BASE_URL = process.env.WAHA_BASE_URL;
+        const WAHA_KEY = process.env.WAHA_API_KEY;
+        
+        if (WAHA_BASE_URL) {
+            try {
+                const contactRes = await fetch(`${WAHA_BASE_URL}/api/default/contacts/${fromId}`, {
+                    headers: { 'X-Api-Key': WAHA_KEY }
+                });
+                if (contactRes.ok) {
+                    const contact = await contactRes.json();
+                    phone = (contact.number || contact.id || '').replace('@c.us', '');
+                    console.log('LEAD: LID resolved to phone:', phone);
+                }
+            } catch (err) {
+                console.error('LEAD: WAHA API error:', err.message);
+            }
+        }
+    }
+    
     if (!phone) return res.status(400).json({ error: 'No phone number provided' });
 
     let fbc = '';
@@ -181,7 +204,7 @@ module.exports = async (req, res) => {
         shortCode = shortCodeMatch[2].toUpperCase();
         try {
             // Lookup fbc/fbp from Supabase
-            const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/leads?short_code=eq.${shortCode}&select=id,fbc,fbp`, {
+            const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/leads?short_code=eq.${shortCode}&select=id,fbc,fbp,whatsapp`, {
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
             });
             
@@ -191,11 +214,30 @@ module.exports = async (req, res) => {
                     fbc = leads[0].fbc || '';
                     fbp = leads[0].fbp || '';
                     
-                    // Update wa_confirmed
+                    // Build update payload: always set wa_confirmed
+                    const updateData = { 
+                        wa_confirmed: true, 
+                        status: 'wa_confirmed', 
+                        confirmed_at: new Date().toISOString() 
+                    };
+                    
+                    // Auto-correct phone number if resolved phone differs from stored
+                    const storedPhone = leads[0].whatsapp || '';
+                    const phoneNormalized = phone.startsWith('0') ? '62' + phone.slice(1) : phone;
+                    const storedNormalized = storedPhone.startsWith('0') ? '62' + storedPhone.slice(1) : storedPhone;
+                    
+                    if (phoneNormalized !== storedNormalized && phone.length >= 10) {
+                        // Store in 08xxx format for consistency
+                        const phoneForDB = phone.startsWith('62') ? '0' + phone.slice(2) : phone;
+                        updateData.whatsapp = phoneForDB;
+                        console.log(`LEAD: Auto-corrected phone from ${storedPhone} to ${phoneForDB} (code: ${shortCode})`);
+                    }
+                    
+                    // Update lead in Supabase
                     await fetch(`${SUPABASE_URL}/rest/v1/leads?id=eq.${leads[0].id}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
-                        body: JSON.stringify({ wa_confirmed: true, status: 'wa_confirmed', confirmed_at: new Date().toISOString() })
+                        body: JSON.stringify(updateData)
                     });
                 }
             }
