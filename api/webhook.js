@@ -53,71 +53,60 @@ module.exports = async (req, res) => {
     if (isFromMe) {
         if (bodyRaw.includes('#thanks')) {
             // Admin replied #thanks to a customer
-            // WAHA uses payload.to for the recipient, or payload.chatId, or extract from payload.id
             const rawTo = toId || payload.chatId || '';
-            const targetPhone = rawTo.replace('@c.us', '').replace('@s.whatsapp.net', '');
             
             console.log('THANKS DEBUG:', JSON.stringify({
-                rawTo,
-                targetPhone,
-                toId,
-                chatId: payload.chatId,
-                payloadId: payload.id
+                rawTo, toId, chatId: payload.chatId, payloadId: payload.id
             }));
             
-            if (!targetPhone) {
-                // Last resort: try to extract from message ID (format: "true_PHONE@c.us_HASH")
-                const idMatch = (payload.id || '').match(/true_(\d+)@/);
-                if (idMatch && idMatch[1]) {
-                    console.log('THANKS: Extracted phone from message ID:', idMatch[1]);
-                    // Recursive call with extracted phone
-                    const extractedPhone = idMatch[1];
-                    const phone08 = extractedPhone.startsWith('62') ? '0' + extractedPhone.slice(2) : extractedPhone;
-                    const phone62 = extractedPhone.startsWith('0') ? '62' + extractedPhone.slice(1) : extractedPhone;
-                    
+            // === RESOLVE PHONE NUMBER ===
+            let targetPhone = '';
+            
+            if (rawTo.includes('@lid')) {
+                // New WhatsApp LID format — need to call WAHA API to get real phone
+                const WAHA_BASE_URL = process.env.WAHA_BASE_URL;
+                const WAHA_KEY = process.env.WAHA_API_KEY;
+                
+                if (WAHA_BASE_URL) {
                     try {
-                        const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/leads?or=(whatsapp.eq.${extractedPhone},whatsapp.eq.${phone08},whatsapp.eq.${phone62})&order=created_at.desc&limit=1`, {
-                            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                        console.log('THANKS: Resolving LID via WAHA API:', rawTo);
+                        const contactRes = await fetch(`${WAHA_BASE_URL}/api/default/contacts/${rawTo}`, {
+                            headers: { 'X-Api-Key': WAHA_KEY }
                         });
-                        
-                        if (sbRes.ok) {
-                            const leads = await sbRes.json();
-                            if (leads && leads.length > 0) {
-                                const lead = leads[0];
-                                if (lead.status === 'purchased') {
-                                    console.log(`#thanks ignored: lead ${lead.short_code} already purchased`);
-                                    return res.status(200).json({ ok: true, reason: 'Already purchased', code: lead.short_code });
-                                }
-                                
-                                const phoneForHash = extractedPhone.startsWith('0') ? '62' + extractedPhone.slice(1) : extractedPhone;
-                                const hashedPhone = crypto.createHash('sha256').update(phoneForHash).digest('hex');
-                                const eventId = `purchase_${lead.short_code || extractedPhone}_${Math.floor(Date.now() / 1000)}`;
-                                const purchaseValue = (lead.jumlah || 1) * 149000;
-                                
-                                await sendToFacebookCAPI(hashedPhone, payload, lead.fbc, lead.fbp, eventId, 'Purchase', purchaseValue);
-                                await sendToGA(phoneForHash, eventId, 'Purchase', purchaseValue);
-                                
-                                await fetch(`${SUPABASE_URL}/rest/v1/leads?id=eq.${lead.id}`, {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
-                                    body: JSON.stringify({ purchased: true, status: 'purchased', purchased_at: new Date().toISOString() })
-                                });
-                                
-                                console.log(`Purchase event sent (from ID) for ${phoneForHash} (code: ${lead.short_code})`);
-                                return res.status(200).json({ ok: true, event: 'Purchase', phone: phoneForHash, source: 'id_extraction' });
-                            }
+                        if (contactRes.ok) {
+                            const contact = await contactRes.json();
+                            targetPhone = (contact.number || contact.id || '').replace('@c.us', '');
+                            console.log('THANKS: LID resolved to phone:', targetPhone);
+                        } else {
+                            console.error('THANKS: WAHA contact lookup failed:', contactRes.status);
                         }
                     } catch (err) {
-                        console.error("Error processing Purchase event (ID extraction):", err);
+                        console.error('THANKS: WAHA API error:', err.message);
                     }
+                } else {
+                    console.error('THANKS: WAHA_BASE_URL not set, cannot resolve @lid');
                 }
-                
+            } else if (rawTo.includes('@c.us') || rawTo.includes('@s.whatsapp.net')) {
+                // Standard format — just strip the suffix
+                targetPhone = rawTo.replace('@c.us', '').replace('@s.whatsapp.net', '');
+            }
+            
+            // Fallback: extract phone from message ID (format: "true_PHONE@c.us_HASH")
+            if (!targetPhone) {
+                const idMatch = (payload.id || '').match(/true_(\d+)@/);
+                if (idMatch && idMatch[1]) {
+                    targetPhone = idMatch[1];
+                    console.log('THANKS: Extracted phone from message ID:', targetPhone);
+                }
+            }
+            
+            if (!targetPhone) {
+                console.log('THANKS: Could not resolve any phone number');
                 return res.status(200).json({ ok: true, reason: '#thanks but no target phone found' });
             }
             
+            // === LOOKUP LEAD & SEND PURCHASE ===
             try {
-                // Normalize phone: user may have saved as 08xxx, we get 628xxx from WAHA
-                // Try both formats
                 const phone08 = targetPhone.startsWith('62') ? '0' + targetPhone.slice(2) : targetPhone;
                 const phone62 = targetPhone.startsWith('0') ? '62' + targetPhone.slice(1) : targetPhone;
                 
@@ -134,27 +123,21 @@ module.exports = async (req, res) => {
                     if (leads && leads.length > 0) {
                         const lead = leads[0];
                         
-                        // Cegah double purchase: skip jika sudah pernah purchased
                         if (lead.status === 'purchased') {
                             console.log(`#thanks ignored: lead ${lead.short_code} already purchased`);
                             return res.status(200).json({ ok: true, reason: 'Already purchased', code: lead.short_code });
                         }
                         
-                        // Hash phone (always use 62 format for consistency)
                         const phoneForHash = targetPhone.startsWith('0') ? '62' + targetPhone.slice(1) : targetPhone;
                         const hashedPhone = crypto.createHash('sha256').update(phoneForHash).digest('hex');
                         const eventId = `purchase_${lead.short_code || targetPhone}_${Math.floor(Date.now() / 1000)}`;
-                        
                         const purchaseValue = (lead.jumlah || 1) * 149000;
                         
-                        // Send Purchase to FB CAPI
                         console.log('SENDING FB CAPI Purchase...');
                         await sendToFacebookCAPI(hashedPhone, payload, lead.fbc, lead.fbp, eventId, 'Purchase', purchaseValue);
-                        // Send Purchase to GA
                         console.log('SENDING GA Purchase...');
                         await sendToGA(phoneForHash, eventId, 'Purchase', purchaseValue);
                         
-                        // Update Supabase
                         await fetch(`${SUPABASE_URL}/rest/v1/leads?id=eq.${lead.id}`, {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
