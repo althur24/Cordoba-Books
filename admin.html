@@ -127,20 +127,20 @@
         .table-header h2 { font-size: 1.25rem; }
         
         table { width: 100%; border-collapse: collapse; text-align: left; }
-        th, td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+        th, td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
         th { 
-            background: #F8FAFC; font-weight: 600; font-size: 0.875rem; color: var(--text-muted); 
+            background: #F8FAFC; font-weight: 600; font-size: 0.75rem; color: var(--text-muted); 
             position: sticky; top: 0; z-index: 10; 
             box-shadow: 0 1px 0 var(--border), 0 -1px 0 var(--border);
             border-bottom: none; /* replaced by box-shadow for sticky */
         }
-        td { font-size: 0.875rem; vertical-align: top; padding-top: 1.25rem; }
+        td { font-size: 0.8rem; vertical-align: top; padding-top: 0.75rem; }
         tbody tr { transition: background-color 0.2s; }
         tbody tr:hover { background-color: #F1F5F9; }
         
         /* Column specifics */
-        th:nth-child(6), td:nth-child(6) { text-align: center; } /* Kolom Buku */
-        td:nth-child(5) { max-width: 250px; } /* Kolom Alamat */
+        th:nth-child(7), td:nth-child(7) { text-align: center; } /* Kolom Buku (now 7 after No. column) */
+        td:nth-child(6) { max-width: 200px; } /* Kolom Alamat (now 6 after No. column) */
         
         .address-text {
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
@@ -152,8 +152,8 @@
         .flex-cell { display: flex; gap: 0.5rem; align-items: flex-start; }
         
         .badge {
-            display: inline-flex; align-items: center; justify-content: center; padding: 0.35rem 0.75rem;
-            border-radius: 999px; font-size: 0.75rem; font-weight: 600; gap: 0.25rem; white-space: nowrap;
+            display: inline-flex; align-items: center; justify-content: center; padding: 0.25rem 0.5rem;
+            border-radius: 999px; font-size: 0.7rem; font-weight: 600; gap: 0.2rem; white-space: nowrap;
         }
         .badge-warning { background: #FEF3C7; color: #B45309; }
         .badge-info { background: #DBEAFE; color: #1D4ED8; }
@@ -163,8 +163,8 @@
         .copy-btn {
             display: inline-flex; align-items: center; justify-content: center;
             background: none; border: 1px solid var(--border); border-radius: 0.375rem;
-            cursor: pointer; padding: 0.2rem 0.4rem; margin-left: 0.4rem;
-            font-size: 0.75rem; color: var(--text-muted); transition: all 0.2s;
+            cursor: pointer; padding: 0.15rem 0.3rem; margin-left: 0.3rem;
+            font-size: 0.7rem; color: var(--text-muted); transition: all 0.2s;
             vertical-align: middle;
         }
         .copy-btn:hover { background: #F1F5F9; color: var(--text-main); border-color: var(--info); }
@@ -181,10 +181,10 @@
         .copy-toast.show { transform: translateX(-50%) translateY(0); }
 
         /* Status action buttons */
-        .status-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: nowrap; }
+        .status-actions { display: flex; align-items: center; gap: 0.3rem; flex-wrap: nowrap; }
         .btn-sm {
-            display: inline-flex; align-items: center; gap: 0.35rem;
-            padding: 0.4rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem;
+            display: inline-flex; align-items: center; gap: 0.2rem;
+            padding: 0.3rem 0.5rem; border-radius: 0.4rem; font-size: 0.7rem;
             font-weight: 600; border: 1px solid var(--border); background: white;
             cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
             white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
