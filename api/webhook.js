@@ -34,24 +34,84 @@ module.exports = async (req, res) => {
     console.log('WEBHOOK DEBUG:', JSON.stringify({
         event,
         fromMe: payload.fromMe,
+        fromMeType: typeof payload.fromMe,
         from: fromId,
         to: toId,
         chatId: payload.chatId,
         body: bodyRaw.substring(0, 100),
-        hasThanks: bodyRaw.includes('#thanks')
+        hasThanks: bodyRaw.includes('#thanks'),
+        id: payload.id,
+        source: payload.source
     }));
     
     // ==========================================
     // SCENARIO 1: ADMIN SENDS #thanks (PURCHASE)
     // ==========================================
-    if (payload.fromMe === true) {
+    // fromMe can be boolean true or string "true" depending on WAHA version/engine
+    const isFromMe = payload.fromMe === true || payload.fromMe === 'true';
+    
+    if (isFromMe) {
         if (bodyRaw.includes('#thanks')) {
             // Admin replied #thanks to a customer
-            // WAHA uses payload.to for the recipient, or payload.chatId
+            // WAHA uses payload.to for the recipient, or payload.chatId, or extract from payload.id
             const rawTo = toId || payload.chatId || '';
             const targetPhone = rawTo.replace('@c.us', '').replace('@s.whatsapp.net', '');
             
+            console.log('THANKS DEBUG:', JSON.stringify({
+                rawTo,
+                targetPhone,
+                toId,
+                chatId: payload.chatId,
+                payloadId: payload.id
+            }));
+            
             if (!targetPhone) {
+                // Last resort: try to extract from message ID (format: "true_PHONE@c.us_HASH")
+                const idMatch = (payload.id || '').match(/true_(\d+)@/);
+                if (idMatch && idMatch[1]) {
+                    console.log('THANKS: Extracted phone from message ID:', idMatch[1]);
+                    // Recursive call with extracted phone
+                    const extractedPhone = idMatch[1];
+                    const phone08 = extractedPhone.startsWith('62') ? '0' + extractedPhone.slice(2) : extractedPhone;
+                    const phone62 = extractedPhone.startsWith('0') ? '62' + extractedPhone.slice(1) : extractedPhone;
+                    
+                    try {
+                        const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/leads?or=(whatsapp.eq.${extractedPhone},whatsapp.eq.${phone08},whatsapp.eq.${phone62})&order=created_at.desc&limit=1`, {
+                            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                        });
+                        
+                        if (sbRes.ok) {
+                            const leads = await sbRes.json();
+                            if (leads && leads.length > 0) {
+                                const lead = leads[0];
+                                if (lead.status === 'purchased') {
+                                    console.log(`#thanks ignored: lead ${lead.short_code} already purchased`);
+                                    return res.status(200).json({ ok: true, reason: 'Already purchased', code: lead.short_code });
+                                }
+                                
+                                const phoneForHash = extractedPhone.startsWith('0') ? '62' + extractedPhone.slice(1) : extractedPhone;
+                                const hashedPhone = crypto.createHash('sha256').update(phoneForHash).digest('hex');
+                                const eventId = `purchase_${lead.short_code || extractedPhone}_${Math.floor(Date.now() / 1000)}`;
+                                const purchaseValue = (lead.jumlah || 1) * 149000;
+                                
+                                await sendToFacebookCAPI(hashedPhone, payload, lead.fbc, lead.fbp, eventId, 'Purchase', purchaseValue);
+                                await sendToGA(phoneForHash, eventId, 'Purchase', purchaseValue);
+                                
+                                await fetch(`${SUPABASE_URL}/rest/v1/leads?id=eq.${lead.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+                                    body: JSON.stringify({ purchased: true, status: 'purchased', purchased_at: new Date().toISOString() })
+                                });
+                                
+                                console.log(`Purchase event sent (from ID) for ${phoneForHash} (code: ${lead.short_code})`);
+                                return res.status(200).json({ ok: true, event: 'Purchase', phone: phoneForHash, source: 'id_extraction' });
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Error processing Purchase event (ID extraction):", err);
+                    }
+                }
+                
                 return res.status(200).json({ ok: true, reason: '#thanks but no target phone found' });
             }
             
@@ -61,12 +121,16 @@ module.exports = async (req, res) => {
                 const phone08 = targetPhone.startsWith('62') ? '0' + targetPhone.slice(2) : targetPhone;
                 const phone62 = targetPhone.startsWith('0') ? '62' + targetPhone.slice(1) : targetPhone;
                 
+                console.log('THANKS LOOKUP:', JSON.stringify({ targetPhone, phone08, phone62 }));
+                
                 const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/leads?or=(whatsapp.eq.${targetPhone},whatsapp.eq.${phone08},whatsapp.eq.${phone62})&order=created_at.desc&limit=1`, {
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
                 });
                 
                 if (sbRes.ok) {
                     const leads = await sbRes.json();
+                    console.log('THANKS LEADS FOUND:', leads.length, leads.length > 0 ? `code: ${leads[0].short_code}, status: ${leads[0].status}` : 'none');
+                    
                     if (leads && leads.length > 0) {
                         const lead = leads[0];
                         
@@ -84,8 +148,10 @@ module.exports = async (req, res) => {
                         const purchaseValue = (lead.jumlah || 1) * 149000;
                         
                         // Send Purchase to FB CAPI
+                        console.log('SENDING FB CAPI Purchase...');
                         await sendToFacebookCAPI(hashedPhone, payload, lead.fbc, lead.fbp, eventId, 'Purchase', purchaseValue);
                         // Send Purchase to GA
+                        console.log('SENDING GA Purchase...');
                         await sendToGA(phoneForHash, eventId, 'Purchase', purchaseValue);
                         
                         // Update Supabase
@@ -100,6 +166,8 @@ module.exports = async (req, res) => {
                     } else {
                         console.log(`#thanks received but no lead found for phone: ${targetPhone}`);
                     }
+                } else {
+                    console.error('Supabase lookup failed:', sbRes.status, await sbRes.text());
                 }
             } catch (err) {
                 console.error("Error processing Purchase event:", err);
