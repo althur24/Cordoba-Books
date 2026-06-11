@@ -171,6 +171,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const overlay = document.getElementById('loading-overlay');
             if (overlay) overlay.classList.add('active');
 
+            // Disable submit button to prevent double clicks (which cause double Lead CB events)
+            const submitBtn = orderForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Memproses...';
+            }
+
             // === FIRE LEAD EVENT (Facebook Pixel + Google Analytics) ===
             if (typeof fbq !== 'undefined') {
                 fbq('trackCustom', 'Lead CB', {
@@ -184,7 +191,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 gtag('event', 'Lead CB', {
                     event_category: 'Custom Conversion',
                     event_label: 'Form Submitted',
-                    value: jumlah * BOOK_PRICE
+                    value: jumlah * BOOK_PRICE,
+                    transport_type: 'beacon',
+                    non_interaction: true
                 });
             }
             
