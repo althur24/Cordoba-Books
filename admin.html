@@ -120,11 +120,29 @@
             background: var(--card-bg); border-radius: 0.75rem; border: 1px solid var(--border);
             overflow: hidden;
         }
-        .table-header {
-            padding: 1.5rem; border-bottom: 1px solid var(--border);
-            display: flex; justify-content: space-between; align-items: center;
+        .table-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+        .table-header h2 { font-size: 1.1rem; }
+
+        /* Filter Bar */
+        .filter-bar {
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;
+            padding: 1rem 1.25rem; background: white; border-radius: 1rem;
+            border: 1px solid var(--border); margin-bottom: 0.75rem;
         }
-        .table-header h2 { font-size: 1.25rem; }
+        .filter-buttons { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+        .filter-btn {
+            padding: 0.4rem 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border);
+            background: white; font-size: 0.75rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; color: var(--text-muted);
+        }
+        .filter-btn:hover { background: #F1F5F9; color: var(--text-main); }
+        .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .filter-custom { display: flex; align-items: center; gap: 0.4rem; }
+        .filter-custom input[type="date"] {
+            padding: 0.35rem 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border);
+            font-size: 0.75rem; color: var(--text-main); background: white; cursor: pointer;
+        }
+        .filter-custom input[type="date"]:focus { outline: none; border-color: var(--primary); }
         
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th, td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
@@ -308,10 +326,29 @@
                 </div>
             </div>
 
+            <!-- Date Filter Bar -->
+            <div class="filter-bar">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="setFilter('all')">📋 Semua</button>
+                    <button class="filter-btn" onclick="setFilter('today')">📅 Hari Ini</button>
+                    <button class="filter-btn" onclick="setFilter('yesterday')">⏪ Kemarin</button>
+                    <button class="filter-btn" onclick="setFilter('7days')">📆 7 Hari</button>
+                    <button class="filter-btn" onclick="setFilter('30days')">🗓️ 30 Hari</button>
+                </div>
+                <div class="filter-custom">
+                    <input type="date" id="filter-date-from" onchange="setFilter('custom')">
+                    <span style="color: var(--text-muted); font-size: 0.8rem;">s/d</span>
+                    <input type="date" id="filter-date-to" onchange="setFilter('custom')">
+                </div>
+            </div>
+
             <div class="table-container">
                 <div class="table-header">
-                    <h2>Data Leads Terbaru</h2>
-                    <button class="btn" style="width: auto; padding: 0.5rem 1rem;" onclick="loadData()">🔄 Refresh</button>
+                    <h2 id="table-title">Data Leads Terbaru</h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span id="filter-count" style="font-size: 0.75rem; color: var(--text-muted);"></span>
+                        <button class="btn" style="width: auto; padding: 0.5rem 1rem;" onclick="loadData()">🔄 Refresh</button>
+                    </div>
                 </div>
                 <div style="overflow-x: auto;">
                     <table>
@@ -492,7 +529,67 @@
         }
 
         let allLeads = [];
+        let filteredLeads = [];
         let currentDisplayCount = 10;
+        let currentFilter = 'all';
+
+        // Date filter logic
+        function setFilter(type) {
+            currentFilter = type;
+            
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            if (type !== 'custom') {
+                const labels = { all: '📋 Semua', today: '📅 Hari Ini', yesterday: '⏪ Kemarin', '7days': '📆 7 Hari', '30days': '🗓️ 30 Hari' };
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    if (btn.textContent === labels[type]) btn.classList.add('active');
+                });
+            }
+            
+            applyFilter();
+        }
+        
+        function applyFilter() {
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            if (currentFilter === 'all') {
+                filteredLeads = [...allLeads];
+            } else if (currentFilter === 'today') {
+                filteredLeads = allLeads.filter(l => new Date(l.created_at) >= todayStart);
+            } else if (currentFilter === 'yesterday') {
+                const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+                filteredLeads = allLeads.filter(l => { const d = new Date(l.created_at); return d >= yesterdayStart && d < todayStart; });
+            } else if (currentFilter === '7days') {
+                const weekAgo = new Date(todayStart); weekAgo.setDate(weekAgo.getDate() - 7);
+                filteredLeads = allLeads.filter(l => new Date(l.created_at) >= weekAgo);
+            } else if (currentFilter === '30days') {
+                const monthAgo = new Date(todayStart); monthAgo.setDate(monthAgo.getDate() - 30);
+                filteredLeads = allLeads.filter(l => new Date(l.created_at) >= monthAgo);
+            } else if (currentFilter === 'custom') {
+                const fromVal = document.getElementById('filter-date-from').value;
+                const toVal = document.getElementById('filter-date-to').value;
+                if (fromVal) {
+                    const from = new Date(fromVal);
+                    const to = toVal ? new Date(new Date(toVal).getTime() + 86400000) : new Date(from.getTime() + 86400000);
+                    filteredLeads = allLeads.filter(l => { const d = new Date(l.created_at); return d >= from && d < to; });
+                } else {
+                    filteredLeads = [...allLeads];
+                }
+            }
+            
+            // Update counter
+            const countEl = document.getElementById('filter-count');
+            if (currentFilter === 'all') {
+                countEl.textContent = '';
+            } else {
+                countEl.textContent = `(${filteredLeads.length} dari ${allLeads.length} data)`;
+            }
+            
+            currentDisplayCount = 10;
+            updateStats(filteredLeads);
+            renderTable();
+        }
 
         // Load Data
         async function loadData() {
@@ -517,9 +614,7 @@
                 const data = await res.json();
                 if (data.leads) {
                     allLeads = data.leads;
-                    currentDisplayCount = 10; // reset
-                    updateStats(allLeads);
-                    renderTable();
+                    applyFilter(); // Apply current filter to new data
                 }
             } catch (e) {
                 console.error(e);
@@ -536,16 +631,16 @@
             const loadMoreBtn = document.getElementById('load-more-container');
             tbody.innerHTML = '';
             
-            if (allLeads.length === 0) {
+            if (filteredLeads.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Belum ada data.</td></tr>';
                 loadMoreBtn.style.display = 'none';
                 return;
             }
 
             // Get subset for pagination
-            const displayLeads = allLeads.slice(0, currentDisplayCount);
+            const displayLeads = filteredLeads.slice(0, currentDisplayCount);
             
-            if (allLeads.length > currentDisplayCount) {
+            if (filteredLeads.length > currentDisplayCount) {
                 loadMoreBtn.style.display = 'block';
             } else {
                 loadMoreBtn.style.display = 'none';
