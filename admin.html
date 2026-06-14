@@ -586,7 +586,8 @@
                 countEl.textContent = `(${filteredLeads.length} dari ${allLeads.length} data)`;
             }
             
-            currentDisplayCount = 10;
+            // Show all results when filter is active, only paginate on 'Semua'
+            currentDisplayCount = (currentFilter === 'all') ? 10 : filteredLeads.length;
             updateStats(filteredLeads);
             renderTable();
         }
@@ -680,7 +681,7 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="text-align: center; font-weight: 600; color: var(--text-muted);">${index + 1}</td>
+                    <td style="text-align: center; font-weight: 600; color: var(--text-muted);">${filteredLeads.indexOf(lead) + 1}</td>
                     <td>${date}</td>
                     <td style="font-family: monospace; font-weight: 600;">CB-${esc(lead.short_code)}</td>
                     <td>
