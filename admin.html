@@ -371,8 +371,9 @@
                         </tbody>
                     </table>
                 </div>
-                <div id="load-more-container" style="text-align: center; padding: 1.5rem; border-top: 1px solid var(--border); display: none;">
-                    <button class="btn btn-outline" style="color: var(--text-main); border-color: var(--border);" onclick="loadMore()">⬇️ Tampilkan Lebih Banyak</button>
+                <div id="load-more-container" style="text-align: center; padding: 1rem; border-top: 1px solid var(--border); display: none; gap: 0.5rem; justify-content: center;">
+                    <button id="btn-show-less" class="btn btn-outline" style="color: var(--text-main); border-color: var(--border); display: none;" onclick="showLess()">⬆️ Tampilkan Lebih Sedikit</button>
+                    <button id="btn-load-more" class="btn btn-outline" style="color: var(--text-main); border-color: var(--border);" onclick="loadMore()">⬇️ Tampilkan Lebih Banyak</button>
                 </div>
             </div>
         </main>
@@ -622,6 +623,13 @@
             }
         }
         
+        function showLess() {
+            currentDisplayCount = 10;
+            renderTable();
+            // Scroll to top of table
+            document.querySelector('.table-container').scrollIntoView({ behavior: 'smooth' });
+        }
+        
         function loadMore() {
             currentDisplayCount += 10;
             renderTable();
@@ -629,12 +637,12 @@
 
         function renderTable() {
             const tbody = document.getElementById('leads-body');
-            const loadMoreBtn = document.getElementById('load-more-container');
+            const loadMoreContainer = document.getElementById('load-more-container');
             tbody.innerHTML = '';
             
             if (filteredLeads.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Belum ada data.</td></tr>';
-                loadMoreBtn.style.display = 'none';
+                loadMoreContainer.style.display = 'none';
                 return;
             }
 
@@ -642,9 +650,22 @@
             const displayLeads = filteredLeads.slice(0, currentDisplayCount);
             
             if (filteredLeads.length > currentDisplayCount) {
-                loadMoreBtn.style.display = 'block';
+                loadMoreContainer.style.display = 'flex';
+                document.getElementById('btn-load-more').style.display = 'inline-block';
             } else {
-                loadMoreBtn.style.display = 'none';
+                document.getElementById('btn-load-more').style.display = 'none';
+            }
+            
+            if (currentDisplayCount > 10) {
+                loadMoreContainer.style.display = 'flex';
+                document.getElementById('btn-show-less').style.display = 'inline-block';
+            } else {
+                document.getElementById('btn-show-less').style.display = 'none';
+            }
+            
+            // Hide container if neither button is visible
+            if (filteredLeads.length <= currentDisplayCount && currentDisplayCount <= 10) {
+                loadMoreContainer.style.display = 'none';
             }
 
             // Escape HTML to prevent XSS
