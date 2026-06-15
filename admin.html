@@ -571,8 +571,18 @@
                 const fromVal = document.getElementById('filter-date-from').value;
                 const toVal = document.getElementById('filter-date-to').value;
                 if (fromVal) {
-                    const from = new Date(fromVal);
-                    const to = toVal ? new Date(new Date(toVal).getTime() + 86400000) : new Date(from.getTime() + 86400000);
+                    // Parse as LOCAL time (WIB), not UTC
+                    const [fy, fm, fd] = fromVal.split('-').map(Number);
+                    const from = new Date(fy, fm - 1, fd); // Local midnight
+                    
+                    let to;
+                    if (toVal) {
+                        const [ty, tm, td] = toVal.split('-').map(Number);
+                        to = new Date(ty, tm - 1, td + 1); // Next day local midnight
+                    } else {
+                        to = new Date(fy, fm - 1, fd + 1); // Next day local midnight
+                    }
+                    
                     filteredLeads = allLeads.filter(l => { const d = new Date(l.created_at); return d >= from && d < to; });
                 } else {
                     filteredLeads = [...allLeads];
