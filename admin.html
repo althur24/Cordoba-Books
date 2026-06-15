@@ -550,7 +550,7 @@
             applyFilter();
         }
         
-        function applyFilter() {
+        function applyFilter(resetPagination = true) {
             const now = new Date();
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             
@@ -587,8 +587,10 @@
                 countEl.textContent = `(${filteredLeads.length} dari ${allLeads.length} data)`;
             }
             
-            // Show all results when filter is active, only paginate on 'Semua'
-            currentDisplayCount = (currentFilter === 'all') ? 10 : filteredLeads.length;
+            // Only reset pagination when user explicitly changes filter, not on auto-refresh
+            if (resetPagination) {
+                currentDisplayCount = (currentFilter === 'all') ? 10 : filteredLeads.length;
+            }
             updateStats(filteredLeads);
             renderTable();
         }
@@ -616,7 +618,7 @@
                 const data = await res.json();
                 if (data.leads) {
                     allLeads = data.leads;
-                    applyFilter(); // Apply current filter to new data
+                    applyFilter(false); // Don't reset pagination on auto-refresh
                 }
             } catch (e) {
                 console.error(e);
