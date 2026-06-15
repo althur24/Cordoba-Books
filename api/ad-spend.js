@@ -81,8 +81,8 @@ module.exports = async (req, res) => {
         };
 
         try {
-            // Upsert: insert or update on conflict (date)
-            const upsertRes = await fetch(`${SUPABASE_URL}/rest/v1/ad_spend`, {
+            // Try upsert with on_conflict parameter
+            const upsertRes = await fetch(`${SUPABASE_URL}/rest/v1/ad_spend?on_conflict=date`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -93,13 +93,35 @@ module.exports = async (req, res) => {
                 body: JSON.stringify(payload)
             });
 
-            if (!upsertRes.ok) {
-                const errText = await upsertRes.text();
-                return res.status(500).json({ error: 'Failed to save ad_spend', detail: errText });
+            if (upsertRes.ok) {
+                const data = await upsertRes.json();
+                return res.status(200).json({ ok: true, ad_spend: data[0] || data });
             }
 
-            const data = await upsertRes.json();
-            return res.status(200).json({ ok: true, ad_spend: data[0] || data });
+            // If upsert fails, try PATCH (update existing)
+            const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/ad_spend?date=eq.${date}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify({
+                    amount: payload.amount,
+                    tax_rate: payload.tax_rate,
+                    notes: payload.notes,
+                    updated_at: payload.updated_at
+                })
+            });
+
+            if (patchRes.ok) {
+                const data = await patchRes.json();
+                return res.status(200).json({ ok: true, ad_spend: data[0] || data });
+            }
+
+            const errText = await patchRes.text();
+            return res.status(500).json({ error: 'Failed to save ad_spend', detail: errText });
         } catch (e) {
             return res.status(500).json({ error: e.message });
         }
