@@ -299,6 +299,79 @@
 
         .day-label { font-size: 0.7rem; color: var(--text-muted); }
 
+        /* ========== MOBILE RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column; gap: 0.75rem;
+                padding: 1rem; text-align: center;
+            }
+            .header-actions {
+                flex-wrap: wrap; justify-content: center; gap: 0.5rem;
+            }
+            .header-actions .btn-outline {
+                font-size: 0.75rem; padding: 0.4rem 0.75rem;
+            }
+            .status-indicator { font-size: 0.75rem; padding: 0.35rem 0.75rem; }
+
+            .main-content { padding: 1rem; }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem; margin-bottom: 1.25rem;
+            }
+            .stat-card { padding: 1rem; gap: 0.75rem; }
+            .stat-icon { width: 40px; height: 40px; font-size: 1.25rem; }
+            .stat-info h3 { font-size: 0.7rem; }
+            .stat-info p { font-size: 1.2rem; }
+
+            .tab-nav { gap: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .tab-btn { padding: 0.6rem 1rem; font-size: 0.8rem; white-space: nowrap; }
+
+            .filter-bar {
+                flex-direction: column; align-items: stretch; gap: 0.5rem;
+                padding: 0.75rem;
+            }
+            .filter-buttons { justify-content: flex-start; overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
+            .filter-btn { font-size: 0.7rem; padding: 0.35rem 0.6rem; flex-shrink: 0; }
+            .filter-custom { justify-content: flex-start; }
+            .filter-custom input[type="date"] { font-size: 0.7rem; max-width: 130px; }
+
+            .table-header { flex-direction: column; gap: 0.5rem; align-items: flex-start; padding: 0.75rem; }
+            .table-header h2 { font-size: 0.95rem; }
+
+            th, td { padding: 0.4rem 0.5rem; font-size: 0.7rem; }
+            th { font-size: 0.65rem; }
+
+            .badge { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .btn-sm { font-size: 0.6rem; padding: 0.25rem 0.4rem; }
+
+            /* ROAS Mobile */
+            .roas-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem; margin-bottom: 1rem;
+            }
+            .roas-stat-card { padding: 0.75rem; }
+            .roas-stat-card h4 { font-size: 0.65rem; }
+            .roas-stat-card .roas-value { font-size: 1.15rem; }
+
+            .roas-table th, .roas-table td { padding: 0.4rem 0.5rem; font-size: 0.7rem; }
+            .roas-table th { font-size: 0.6rem; }
+            .spend-input { width: 85px; font-size: 0.7rem; padding: 0.3rem 0.4rem; }
+            .tax-detail { font-size: 0.55rem; }
+            .roas-badge { font-size: 0.7rem; padding: 0.15rem 0.4rem; }
+
+            /* Modal */
+            .modal-content { padding: 1.5rem; margin: 1rem; }
+        }
+
+        @media (max-width: 400px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+            .roas-stats-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+            .stat-info p { font-size: 1rem; }
+            .roas-stat-card .roas-value { font-size: 1rem; }
+            .spend-input { width: 75px; }
+        }
+
     </style>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -355,6 +428,8 @@
                 <button class="tab-btn active" onclick="switchTab('leads')">📋 Data Leads</button>
                 <button class="tab-btn" onclick="switchTab('roas')">📊 ROAS</button>
             </div>
+
+            <div id="tab-leads" class="tab-content active">
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon bg-yellow">📝</div>
@@ -386,7 +461,6 @@
                 </div>
             </div>
 
-            <div id="tab-leads" class="tab-content active">
             <!-- Date Filter Bar -->
             <div class="filter-bar">
                 <div class="filter-buttons">
@@ -1239,7 +1313,7 @@
                     <td style="text-align:right; font-family:monospace; font-weight:600; color: var(--success);">${day.revenue > 0 ? formatRpFull(day.revenue) : '-'}</td>
                     <td style="text-align:right;">${day.qty > 0 ? day.qty + ' buku' : '-'}</td>
                     <td>
-                        <input type="text" class="spend-input" data-date="${day.dateStr}"
+                        <input type="text" class="spend-input" inputmode="numeric" data-date="${day.dateStr}"
                             value="${day.spend > 0 ? Math.round(day.spend).toLocaleString('id-ID') : ''}"
                             placeholder="0">
                         ${day.spend > 0 ? `<div class="tax-detail">PPN ${day.taxRate}%: ${formatRpFull(day.tax)}</div>` : ''}
@@ -1280,7 +1354,9 @@
             tbody.appendChild(totalTr);
         }
 
+        let isSaving = false;
         async function saveAdSpend(input) {
+            if (isSaving) return;
             const dateStr = input.dataset.date;
             const rawVal = input.value.replace(/[^0-9]/g, '');
             const amount = parseInt(rawVal) || 0;
@@ -1289,6 +1365,12 @@
             if (amount > 0) input.value = amount.toLocaleString('id-ID');
             else input.value = '';
 
+            // Skip save if nothing changed
+            const existing = adSpendData[dateStr];
+            if (existing && existing.amount === amount) return;
+            if (!existing && amount === 0) return;
+
+            isSaving = true;
             try {
                 const res = await fetch('/api/ad-spend', {
                     method: 'POST',
@@ -1302,9 +1384,41 @@
                     adSpendData[dateStr] = { amount, tax_rate: 11 };
                     input.classList.add('saved');
                     setTimeout(() => input.classList.remove('saved'), 1500);
-                    renderRoasTable();
+                    // Update summary cards without re-rendering table (prevents losing focus)
+                    updateRoasSummary();
+                    showToast('Ad spend tersimpan!');
                 }
             } catch (e) { console.error('Save ad spend error:', e); }
+            isSaving = false;
+        }
+
+        function updateRoasSummary() {
+            const { from, to } = getRoasDateRange();
+            let totRevenue = 0, totSpend = 0, totSpendRaw = 0;
+            const d = new Date(from);
+            while (d < to) {
+                const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                const dayStart = new Date(d);
+                const dayEnd = new Date(d); dayEnd.setDate(dayEnd.getDate() + 1);
+                const dayLeads = allLeads.filter(l => {
+                    const ld = new Date(l.created_at);
+                    return ld >= dayStart && ld < dayEnd && l.status === 'purchased' && l.processed === true;
+                });
+                const qty = dayLeads.reduce((s, l) => s + (l.jumlah || 1), 0);
+                totRevenue += qty * BOOK_PRICE;
+                const spend = adSpendData[dateStr] ? adSpendData[dateStr].amount : 0;
+                const taxRate = adSpendData[dateStr] ? adSpendData[dateStr].tax_rate : 11;
+                totSpendRaw += spend;
+                totSpend += spend + (spend * taxRate / 100);
+                d.setDate(d.getDate() + 1);
+            }
+            const totRoas = totSpend > 0 ? totRevenue / totSpend : 0;
+            const totProfit = totRevenue - totSpend;
+            document.getElementById('roas-revenue').textContent = formatRpFull(totRevenue);
+            document.getElementById('roas-spend').textContent = formatRpFull(totSpend);
+            document.getElementById('roas-profit').textContent = formatRpFull(totProfit);
+            document.getElementById('roas-profit').className = 'roas-value ' + (totProfit >= 0 ? 'blue' : 'red');
+            document.getElementById('roas-total').textContent = totRoas > 0 ? totRoas.toFixed(2) + 'x' : '-';
         }
 
     </script>
