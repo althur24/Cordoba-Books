@@ -244,6 +244,61 @@
         .dot.error { background: #EF4444; box-shadow: 0 0 8px #EF4444; }
         .dot.pending { background: #F59E0B; box-shadow: 0 0 8px #F59E0B; }
 
+        /* Tab Navigation */
+        .tab-nav { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); }
+        .tab-btn {
+            padding: 0.75rem 1.5rem; border: none; background: none; font-size: 0.9rem;
+            font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+            border-bottom: 2px solid transparent; margin-bottom: -2px; position: relative;
+        }
+        .tab-btn:hover { color: var(--text-main); background: #F8FAFC; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ROAS Styles */
+        .roas-stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem; margin-bottom: 1.5rem;
+        }
+        .roas-stat-card {
+            background: var(--card-bg); padding: 1.25rem; border-radius: 0.75rem;
+            border: 1px solid var(--border); text-align: center;
+        }
+        .roas-stat-card h4 { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.5rem; }
+        .roas-stat-card .roas-value { font-size: 1.5rem; font-weight: 700; }
+        .roas-stat-card .roas-value.green { color: var(--success); }
+        .roas-stat-card .roas-value.red { color: #EF4444; }
+        .roas-stat-card .roas-value.blue { color: var(--info); }
+        .roas-stat-card .roas-value.purple { color: #9333EA; }
+
+        .roas-table { width: 100%; border-collapse: collapse; }
+        .roas-table th, .roas-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+        .roas-table th { background: #F8FAFC; font-weight: 600; color: var(--text-muted); text-align: left; font-size: 0.75rem; }
+        .roas-table td { vertical-align: middle; }
+        .roas-table tbody tr:hover { background: #F8FAFC; }
+        .roas-table .total-row { background: #F0FDF4; font-weight: 700; border-top: 2px solid var(--border); }
+        .roas-table .total-row td { padding: 0.75rem; }
+
+        .spend-input {
+            width: 110px; padding: 0.35rem 0.5rem; border: 1px solid var(--border);
+            border-radius: 0.4rem; font-size: 0.8rem; text-align: right;
+            font-family: monospace; transition: border-color 0.2s;
+        }
+        .spend-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1); }
+        .spend-input.saved { border-color: var(--success); background: #F0FDF4; }
+        .tax-detail { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; line-height: 1.3; }
+        .roas-badge {
+            display: inline-block; padding: 0.2rem 0.5rem; border-radius: 0.4rem;
+            font-weight: 700; font-size: 0.8rem; font-family: monospace;
+        }
+        .roas-badge.good { background: #D1FAE5; color: #047857; }
+        .roas-badge.ok { background: #FEF3C7; color: #B45309; }
+        .roas-badge.bad { background: #FEE2E2; color: #DC2626; }
+        .roas-badge.na { background: #F1F5F9; color: var(--text-muted); }
+
+        .day-label { font-size: 0.7rem; color: var(--text-muted); }
+
     </style>
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -295,6 +350,11 @@
         </header>
 
         <main class="main-content">
+            <!-- Tab Navigation -->
+            <div class="tab-nav">
+                <button class="tab-btn active" onclick="switchTab('leads')">📋 Data Leads</button>
+                <button class="tab-btn" onclick="switchTab('roas')">📊 ROAS</button>
+            </div>
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon bg-yellow">📝</div>
@@ -326,6 +386,7 @@
                 </div>
             </div>
 
+            <div id="tab-leads" class="tab-content active">
             <!-- Date Filter Bar -->
             <div class="filter-bar">
                 <div class="filter-buttons">
@@ -376,6 +437,69 @@
                     <button id="btn-load-more" class="btn btn-outline" style="color: var(--text-main); border-color: var(--border);" onclick="loadMore()">⬇️ Tampilkan Lebih Banyak</button>
                 </div>
             </div>
+            </div><!-- /tab-leads -->
+
+            <!-- ROAS TAB -->
+            <div id="tab-roas" class="tab-content">
+                <div class="roas-stats-grid">
+                    <div class="roas-stat-card">
+                        <h4>💰 Total Revenue</h4>
+                        <p class="roas-value green" id="roas-revenue">Rp 0</p>
+                    </div>
+                    <div class="roas-stat-card">
+                        <h4>💸 Total Ad Spend (+ Pajak)</h4>
+                        <p class="roas-value red" id="roas-spend">Rp 0</p>
+                    </div>
+                    <div class="roas-stat-card">
+                        <h4>📈 Profit</h4>
+                        <p class="roas-value blue" id="roas-profit">Rp 0</p>
+                    </div>
+                    <div class="roas-stat-card">
+                        <h4>🎯 ROAS</h4>
+                        <p class="roas-value purple" id="roas-total">0.00x</p>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="filter-buttons">
+                        <button class="filter-btn roas-filter-btn active" onclick="setRoasFilter('7days')">📆 7 Hari</button>
+                        <button class="filter-btn roas-filter-btn" onclick="setRoasFilter('30days')">🗓️ 30 Hari</button>
+                        <button class="filter-btn roas-filter-btn" onclick="setRoasFilter('all')">📋 Semua</button>
+                    </div>
+                    <div class="filter-custom">
+                        <input type="date" id="roas-date-from" onchange="setRoasFilter('custom')">
+                        <span style="color: var(--text-muted); font-size: 0.8rem;">s/d</span>
+                        <input type="date" id="roas-date-to" onchange="setRoasFilter('custom')">
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <h2>📊 ROAS Harian</h2>
+                        <button class="btn" style="width: auto; padding: 0.5rem 1rem;" onclick="renderRoasTable()">🔄 Refresh</button>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="roas-table">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Hari</th>
+                                    <th style="text-align: right;">Revenue</th>
+                                    <th style="text-align: right;">Qty Buku</th>
+                                    <th>Ad Spend (sebelum pajak)</th>
+                                    <th style="text-align: right;">PPN 11%</th>
+                                    <th style="text-align: right;">Total Spend</th>
+                                    <th style="text-align: center;">ROAS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="roas-body">
+                                <tr><td colspan="8" style="text-align: center; padding: 2rem;">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div><!-- /tab-roas -->
+
         </main>
     </div>
 
@@ -756,14 +880,29 @@
                     btn.addEventListener('click', () => updateLeadStatus(btn.dataset.leadId, btn.dataset.newStatus, btn));
                 });
                 
-                // Set initial checkbox state
+                // Set initial checkbox state from database
                 const checkbox = tr.querySelector('.process-check');
-                const isProcessed = localStorage.getItem(`processed_${lead.id}`) === 'true';
-                checkbox.checked = isProcessed;
+                checkbox.checked = lead.processed === true;
                 
-                // Add event listener to save state
-                checkbox.addEventListener('change', (e) => {
-                    localStorage.setItem(`processed_${lead.id}`, e.target.checked);
+                // Add event listener to save state to database
+                checkbox.addEventListener('change', async (e) => {
+                    const checked = e.target.checked;
+                    try {
+                        await fetch(`/api/ad-spend`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${sessionData.access_token}`
+                            },
+                            body: JSON.stringify({ _action: 'update_processed', leadId: lead.id, processed: checked })
+                        });
+                        // Update local data
+                        lead.processed = checked;
+                        lead.processed_at = checked ? new Date().toISOString() : null;
+                    } catch (err) {
+                        console.error('Failed to update processed:', err);
+                        e.target.checked = !checked; // revert on error
+                    }
                 });
 
                 tbody.appendChild(tr);
@@ -939,6 +1078,233 @@
                 btn.disabled = false;
                 btn.textContent = label;
             }
+        }
+
+        // =============================================
+        // TAB SWITCHING
+        // =============================================
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            if (tab === 'leads') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('tab-leads').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('tab-roas').classList.add('active');
+                loadAdSpendData();
+            }
+        }
+
+        // =============================================
+        // ROAS LOGIC
+        // =============================================
+        const BOOK_PRICE = 149000;
+        let adSpendData = {}; // { 'YYYY-MM-DD': { amount, tax_rate } }
+        let roasFilter = '7days';
+
+        async function loadAdSpendData() {
+            if (!sessionData) return;
+            try {
+                const res = await fetch('/api/ad-spend', {
+                    headers: { 'Authorization': `Bearer ${sessionData.access_token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    adSpendData = {};
+                    (data.ad_spend || []).forEach(r => {
+                        adSpendData[r.date] = { amount: parseFloat(r.amount) || 0, tax_rate: parseFloat(r.tax_rate) || 11 };
+                    });
+                }
+            } catch (e) { console.error('Load ad spend error:', e); }
+            renderRoasTable();
+        }
+
+        function setRoasFilter(type) {
+            roasFilter = type;
+            document.querySelectorAll('.roas-filter-btn').forEach(b => b.classList.remove('active'));
+            if (type !== 'custom') {
+                document.querySelectorAll('.roas-filter-btn').forEach(b => {
+                    const labels = { '7days': '📆 7 Hari', '30days': '🗓️ 30 Hari', 'all': '📋 Semua' };
+                    if (b.textContent === labels[type]) b.classList.add('active');
+                });
+            }
+            renderRoasTable();
+        }
+
+        function getRoasDateRange() {
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            let from, to = new Date(todayStart.getTime() + 86400000);
+
+            if (roasFilter === '7days') {
+                from = new Date(todayStart); from.setDate(from.getDate() - 6);
+            } else if (roasFilter === '30days') {
+                from = new Date(todayStart); from.setDate(from.getDate() - 29);
+            } else if (roasFilter === 'custom') {
+                const fv = document.getElementById('roas-date-from').value;
+                const tv = document.getElementById('roas-date-to').value;
+                if (fv) {
+                    const [fy, fm, fd] = fv.split('-').map(Number);
+                    from = new Date(fy, fm - 1, fd);
+                    if (tv) { const [ty, tm, td] = tv.split('-').map(Number); to = new Date(ty, tm - 1, td + 1); }
+                    else { to = new Date(from.getTime() + 86400000); }
+                } else {
+                    from = new Date(todayStart); from.setDate(from.getDate() - 6);
+                }
+            } else {
+                // 'all': find earliest lead date
+                const dates = allLeads.map(l => new Date(l.created_at));
+                from = dates.length > 0 ? new Date(Math.min(...dates)) : new Date(todayStart);
+                from = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+            }
+            return { from, to };
+        }
+
+        function formatRp(n) {
+            if (n >= 1000000) return 'Rp ' + (n / 1000000).toFixed(1).replace('.0', '') + ' jt';
+            if (n >= 1000) return 'Rp ' + Math.round(n / 1000) + 'rb';
+            return 'Rp ' + n.toLocaleString('id-ID');
+        }
+        function formatRpFull(n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+
+        const HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+        function renderRoasTable() {
+            const tbody = document.getElementById('roas-body');
+            const { from, to } = getRoasDateRange();
+
+            // Build daily data
+            const days = [];
+            const d = new Date(from);
+            while (d < to) {
+                const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                const dayStart = new Date(d);
+                const dayEnd = new Date(d); dayEnd.setDate(dayEnd.getDate() + 1);
+
+                // Leads yang purchased + processed pada hari ini
+                const dayLeads = allLeads.filter(l => {
+                    const ld = new Date(l.created_at);
+                    return ld >= dayStart && ld < dayEnd && l.status === 'purchased' && l.processed === true;
+                });
+
+                const qty = dayLeads.reduce((s, l) => s + (l.jumlah || 1), 0);
+                const revenue = qty * BOOK_PRICE;
+                const spend = adSpendData[dateStr] ? adSpendData[dateStr].amount : 0;
+                const taxRate = adSpendData[dateStr] ? adSpendData[dateStr].tax_rate : 11;
+                const tax = spend * taxRate / 100;
+                const totalSpend = spend + tax;
+                const roas = totalSpend > 0 ? revenue / totalSpend : 0;
+
+                days.push({ dateStr, date: new Date(d), dayName: HARI[d.getDay()], revenue, qty, spend, taxRate, tax, totalSpend, roas });
+                d.setDate(d.getDate() + 1);
+            }
+
+            // Sort newest first
+            days.reverse();
+
+            // Calculate totals
+            const totRevenue = days.reduce((s, d) => s + d.revenue, 0);
+            const totSpend = days.reduce((s, d) => s + d.totalSpend, 0);
+            const totSpendRaw = days.reduce((s, d) => s + d.spend, 0);
+            const totTax = days.reduce((s, d) => s + d.tax, 0);
+            const totQty = days.reduce((s, d) => s + d.qty, 0);
+            const totRoas = totSpend > 0 ? totRevenue / totSpend : 0;
+            const totProfit = totRevenue - totSpend;
+
+            // Update summary cards
+            document.getElementById('roas-revenue').textContent = formatRpFull(totRevenue);
+            document.getElementById('roas-spend').textContent = formatRpFull(totSpend);
+            document.getElementById('roas-profit').textContent = formatRpFull(totProfit);
+            document.getElementById('roas-profit').className = 'roas-value ' + (totProfit >= 0 ? 'blue' : 'red');
+            document.getElementById('roas-total').textContent = totRoas > 0 ? totRoas.toFixed(2) + 'x' : '-';
+
+            // Render rows
+            tbody.innerHTML = '';
+            if (days.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem;">Tidak ada data untuk periode ini.</td></tr>';
+                return;
+            }
+
+            days.forEach(day => {
+                const dateLabel = new Date(day.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                const roasClass = day.roas >= 2 ? 'good' : day.roas >= 1 ? 'ok' : day.spend > 0 ? 'bad' : 'na';
+                const roasText = day.spend > 0 ? day.roas.toFixed(2) + 'x' : '-';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${dateLabel}</strong></td>
+                    <td><span class="day-label">${day.dayName}</span></td>
+                    <td style="text-align:right; font-family:monospace; font-weight:600; color: var(--success);">${day.revenue > 0 ? formatRpFull(day.revenue) : '-'}</td>
+                    <td style="text-align:right;">${day.qty > 0 ? day.qty + ' buku' : '-'}</td>
+                    <td>
+                        <input type="text" class="spend-input" data-date="${day.dateStr}"
+                            value="${day.spend > 0 ? Math.round(day.spend).toLocaleString('id-ID') : ''}"
+                            placeholder="0">
+                        ${day.spend > 0 ? `<div class="tax-detail">PPN ${day.taxRate}%: ${formatRpFull(day.tax)}</div>` : ''}
+                    </td>
+                    <td style="text-align:right; font-family:monospace; color: var(--text-muted);">${day.spend > 0 ? formatRpFull(day.tax) : '-'}</td>
+                    <td style="text-align:right; font-family:monospace; font-weight:600; color: #EF4444;">${day.spend > 0 ? formatRpFull(day.totalSpend) : '-'}</td>
+                    <td style="text-align:center;"><span class="roas-badge ${roasClass}">${roasText}</span></td>
+                `;
+
+                // Attach spend input handler
+                const input = tr.querySelector('.spend-input');
+                let saveTimeout;
+                input.addEventListener('input', () => {
+                    clearTimeout(saveTimeout);
+                    saveTimeout = setTimeout(() => saveAdSpend(input), 1000);
+                });
+                input.addEventListener('blur', () => {
+                    clearTimeout(saveTimeout);
+                    saveAdSpend(input);
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            // Total row
+            const totalTr = document.createElement('tr');
+            totalTr.className = 'total-row';
+            const totRoasClass = totRoas >= 2 ? 'good' : totRoas >= 1 ? 'ok' : totSpendRaw > 0 ? 'bad' : 'na';
+            totalTr.innerHTML = `
+                <td colspan="2"><strong>TOTAL</strong></td>
+                <td style="text-align:right; font-family:monospace; color: var(--success);">${formatRpFull(totRevenue)}</td>
+                <td style="text-align:right;">${totQty} buku</td>
+                <td style="font-family:monospace;">${formatRpFull(totSpendRaw)}</td>
+                <td style="text-align:right; font-family:monospace;">${formatRpFull(totTax)}</td>
+                <td style="text-align:right; font-family:monospace; color: #EF4444;">${formatRpFull(totSpend)}</td>
+                <td style="text-align:center;"><span class="roas-badge ${totRoasClass}">${totSpendRaw > 0 ? totRoas.toFixed(2) + 'x' : '-'}</span></td>
+            `;
+            tbody.appendChild(totalTr);
+        }
+
+        async function saveAdSpend(input) {
+            const dateStr = input.dataset.date;
+            const rawVal = input.value.replace(/[^0-9]/g, '');
+            const amount = parseInt(rawVal) || 0;
+
+            // Format display
+            if (amount > 0) input.value = amount.toLocaleString('id-ID');
+            else input.value = '';
+
+            try {
+                const res = await fetch('/api/ad-spend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionData.access_token}`
+                    },
+                    body: JSON.stringify({ date: dateStr, amount: amount, tax_rate: 11 })
+                });
+                if (res.ok) {
+                    adSpendData[dateStr] = { amount, tax_rate: 11 };
+                    input.classList.add('saved');
+                    setTimeout(() => input.classList.remove('saved'), 1500);
+                    renderRoasTable();
+                }
+            } catch (e) { console.error('Save ad spend error:', e); }
         }
 
     </script>
