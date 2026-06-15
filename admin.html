@@ -1333,16 +1333,17 @@
                     <td style="text-align:center;"><span class="roas-badge ${roasClass}">${roasText}</span></td>
                 `;
 
-                // Attach spend input handler
+                // Attach spend input handler — only save on blur (not while typing)
                 const input = tr.querySelector('.spend-input');
-                let saveTimeout;
-                input.addEventListener('input', () => {
-                    clearTimeout(saveTimeout);
-                    saveTimeout = setTimeout(() => saveAdSpend(input), 1000);
-                });
                 input.addEventListener('blur', () => {
-                    clearTimeout(saveTimeout);
                     saveAdSpend(input);
+                });
+                // Format on Enter key too
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        input.blur();
+                    }
                 });
 
                 tbody.appendChild(tr);
@@ -1371,7 +1372,7 @@
             const rawVal = input.value.replace(/[^0-9]/g, '');
             const amount = parseInt(rawVal) || 0;
 
-            // Format display
+            // Format display after user is done typing
             if (amount > 0) input.value = amount.toLocaleString('id-ID');
             else input.value = '';
 
@@ -1394,7 +1395,6 @@
                     adSpendData[dateStr] = { amount, tax_rate: 11 };
                     input.classList.add('saved');
                     setTimeout(() => input.classList.remove('saved'), 1500);
-                    // Update summary cards without re-rendering table (prevents losing focus)
                     updateRoasSummary();
                     showToast('Ad spend tersimpan!');
                 }
