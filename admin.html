@@ -88,11 +88,12 @@
             padding: 1rem 2rem; display: flex; justify-content: space-between;
             align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
         }
-        .header-brand { display: flex; align-items: center; gap: 1rem; font-weight: 600; }
+        .header-brand { display: flex; align-items: center; gap: 0.75rem; font-weight: 600; }
         .header-brand img { height: 32px; filter: brightness(0) invert(1); }
-        .header-actions { display: flex; gap: 1rem; }
+        .header-actions { display: flex; align-items: center; gap: 0.5rem; }
         .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.3); }
         .btn-outline:hover { background: rgba(255,255,255,0.1); }
+        .btn-outline .btn-label { display: inline; }
 
         .main-content { padding: 2rem; max-width: 1200px; margin: 0 auto; }
 
@@ -302,16 +303,21 @@
         /* ========== MOBILE RESPONSIVE ========== */
         @media (max-width: 768px) {
             .header {
-                flex-direction: column; gap: 0.75rem;
-                padding: 1rem; text-align: center;
+                flex-direction: row; flex-wrap: wrap; gap: 0.5rem;
+                padding: 0.75rem 1rem;
             }
+            .header-brand { font-size: 0.85rem; gap: 0.5rem; flex: 1; min-width: 0; }
+            .header-brand img { height: 24px; }
             .header-actions {
-                flex-wrap: wrap; justify-content: center; gap: 0.5rem;
+                gap: 0.35rem; flex-shrink: 0;
             }
             .header-actions .btn-outline {
-                font-size: 0.75rem; padding: 0.4rem 0.75rem;
+                font-size: 0.7rem; padding: 0.3rem 0.5rem; border-radius: 0.4rem;
             }
-            .status-indicator { font-size: 0.75rem; padding: 0.35rem 0.75rem; }
+            .header-actions .btn-label { display: none; }
+            .status-indicator { font-size: 0.65rem; padding: 0.25rem 0.5rem; gap: 0.3rem; }
+            .dot { width: 8px; height: 8px; }
+            #waha-text { display: none; }
 
             .main-content { padding: 1rem; }
 
@@ -417,8 +423,8 @@
                     <div class="dot" id="waha-dot"></div>
                     <span id="waha-text">Cek WA...</span>
                 </div>
-                <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="openPasswordModal()">🔒 Ganti Password</button>
-                <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="logout()">🚪 Logout</button>
+                <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="openPasswordModal()" title="Ganti Password">🔒 <span class="btn-label">Ganti Password</span></button>
+                <button class="btn btn-outline" style="padding: 0.5rem 1rem;" onclick="logout()" title="Logout">🚪 <span class="btn-label">Logout</span></button>
             </div>
         </header>
 
