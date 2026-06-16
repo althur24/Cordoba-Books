@@ -304,6 +304,33 @@
 
         .day-label { font-size: 0.7rem; color: var(--text-muted); }
 
+        /* Search Bar */
+        .search-bar {
+            display: flex; align-items: center; gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .search-input {
+            flex: 1; padding: 0.6rem 1rem; padding-left: 2.5rem;
+            border: 1px solid var(--border); border-radius: 0.75rem;
+            font-size: 0.85rem; background: white; outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08); }
+        .search-input::placeholder { color: #94A3B8; }
+        .search-wrap {
+            position: relative; flex: 1;
+        }
+        .search-icon {
+            position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%);
+            font-size: 0.9rem; pointer-events: none; color: #94A3B8;
+        }
+        .search-clear {
+            position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+            background: none; border: none; font-size: 1rem; cursor: pointer;
+            color: var(--text-muted); display: none; padding: 0.2rem;
+        }
+        .search-clear:hover { color: var(--text-main); }
+
         /* ========== MOBILE RESPONSIVE ========== */
         @media (max-width: 768px) {
             .header {
@@ -369,6 +396,10 @@
             .spend-input { width: 85px; font-size: 0.7rem; padding: 0.3rem 0.4rem; }
             .tax-detail { font-size: 0.55rem; }
             .roas-badge { font-size: 0.7rem; padding: 0.15rem 0.4rem; }
+
+            /* Search Mobile */
+            .search-input { font-size: 0.8rem; padding: 0.5rem 0.75rem; padding-left: 2.25rem; }
+            .search-icon { font-size: 0.8rem; left: 0.7rem; }
 
             /* Modal */
             .modal-content { padding: 1.5rem; margin: 1rem; }
@@ -484,6 +515,15 @@
                     <input type="date" id="filter-date-from" onchange="setFilter('custom')">
                     <span style="color: var(--text-muted); font-size: 0.8rem;">s/d</span>
                     <input type="date" id="filter-date-to" onchange="setFilter('custom')">
+                </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="search-bar">
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="search-input" placeholder="Cari nama, no HP, atau kode..." oninput="handleSearch()">
+                    <button class="search-clear" id="search-clear" onclick="clearSearch()">&times;</button>
                 </div>
             </div>
 
@@ -741,6 +781,22 @@
         let filteredLeads = [];
         let currentDisplayCount = 10;
         let currentFilter = 'all';
+        let searchQuery = '';
+
+        function handleSearch() {
+            const input = document.getElementById('search-input');
+            const clearBtn = document.getElementById('search-clear');
+            searchQuery = input.value.trim().toLowerCase();
+            clearBtn.style.display = searchQuery ? 'block' : 'none';
+            applyFilter();
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-clear').style.display = 'none';
+            searchQuery = '';
+            applyFilter();
+        }
 
         // Date filter logic
         function setFilter(type) {
@@ -797,9 +853,19 @@
                 }
             }
             
+            // Apply search filter on top of date filter
+            if (searchQuery) {
+                filteredLeads = filteredLeads.filter(l => {
+                    const nama = (l.nama || '').toLowerCase();
+                    const wa = (l.whatsapp || '').toLowerCase();
+                    const code = (l.short_code || '').toLowerCase();
+                    return nama.includes(searchQuery) || wa.includes(searchQuery) || code.includes(searchQuery);
+                });
+            }
+
             // Update counter
             const countEl = document.getElementById('filter-count');
-            if (currentFilter === 'all') {
+            if (currentFilter === 'all' && !searchQuery) {
                 countEl.textContent = '';
             } else {
                 countEl.textContent = `(${filteredLeads.length} dari ${allLeads.length} data)`;
@@ -807,7 +873,7 @@
             
             // Only reset pagination when user explicitly changes filter, not on auto-refresh
             if (resetPagination) {
-                currentDisplayCount = (currentFilter === 'all') ? 10 : filteredLeads.length;
+                currentDisplayCount = (currentFilter === 'all' && !searchQuery) ? 10 : filteredLeads.length;
             }
             updateStats(filteredLeads);
             renderTable();
