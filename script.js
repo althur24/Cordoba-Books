@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-// 6. Promo Countdown Timer (Personalized 2 hours, resets at midnight)
+// 6. Promo Countdown Timer (24 hours — resets at midnight every day)
 function initPromoTimer() {
     const hoursEl = document.getElementById('cd-hours');
     const minutesEl = document.getElementById('cd-minutes');
@@ -262,29 +262,13 @@ function initPromoTimer() {
     
     if (!hoursEl || !promoSection) return;
 
-    const todayString = new Date().toDateString();
-    let savedDate = localStorage.getItem('cordobaPromoDate');
-    let targetTime = Number(localStorage.getItem('cordobaPromoTarget'));
-
-    // If it's a new day or no data exists, start a fresh 5-hour timer
-    if (savedDate !== todayString || !targetTime) {
-        targetTime = Date.now() + (2 * 60 * 60 * 1000); // 2 hours from now
-        localStorage.setItem('cordobaPromoDate', todayString);
-        localStorage.setItem('cordobaPromoTarget', targetTime);
-    }
-
     function update() {
-        const now = Date.now();
-        const diff = targetTime - now;
+        const now = new Date();
+        // Target = midnight tonight (00:00 tomorrow)
+        const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+        const diff = midnight - now;
 
-        if (diff <= 0) {
-            // Timer expired -> revert to original price
-            promoSection.classList.add('promo-expired');
-            if (originalPriceLabel) {
-                originalPriceLabel.innerHTML = 'Harga: <span>Rp 210.000</span>';
-            }
-            return;
-        }
+        if (diff <= 0) return;
 
         const h = Math.floor(diff / (1000 * 60 * 60));
         const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
