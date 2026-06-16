@@ -575,13 +575,28 @@
                         <p class="roas-value red" id="roas-spend">Rp 0</p>
                     </div>
                     <div class="roas-stat-card">
-                        <h4>📈 Profit</h4>
+                        <h4>📈 Net Profit</h4>
                         <p class="roas-value blue" id="roas-profit">Rp 0</p>
                     </div>
                     <div class="roas-stat-card">
                         <h4>🎯 ROAS</h4>
                         <p class="roas-value purple" id="roas-total">0.00x</p>
                     </div>
+                    <div class="roas-stat-card" style="border: 1px dashed var(--warning);">
+                        <h4>⚠️ BEP ROAS</h4>
+                        <p class="roas-value" id="roas-bep" style="color: var(--warning);">-</p>
+                    </div>
+                </div>
+
+                <!-- Net Profit Input -->
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; padding: 0.75rem 1rem; background: white; border: 1px solid var(--border); border-radius: 0.75rem; flex-wrap: wrap;">
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); white-space: nowrap;">💵 Untung Bersih / Buku:</label>
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Rp</span>
+                        <input type="text" id="net-profit-input" class="spend-input" inputmode="numeric"
+                            placeholder="misal: 50.000" style="width: 120px;">
+                    </div>
+                    <span id="bep-hint" style="font-size: 0.7rem; color: var(--text-muted);"></span>
                 </div>
 
                 <div class="filter-bar">
@@ -613,11 +628,12 @@
                                     <th>Ad Spend (sebelum pajak)</th>
                                     <th style="text-align: right;">PPN 11%</th>
                                     <th style="text-align: right;">Total Spend</th>
+                                    <th style="text-align: right;">Net Profit</th>
                                     <th style="text-align: center;">ROAS</th>
                                 </tr>
                             </thead>
                             <tbody id="roas-body">
-                                <tr><td colspan="8" style="text-align: center; padding: 2rem;">Loading...</td></tr>
+                                <tr><td colspan="9" style="text-align: center; padding: 2rem;">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1251,7 +1267,9 @@
         // ROAS LOGIC
         // =============================================
         const BOOK_PRICE = 149000;
-        let adSpendData = {}; // { 'YYYY-MM-DD': { amount, tax_rate } }
+        let adSpendData = {};
+        let netProfitPerBook = 0;
+        let bepRoas = 0;
         let roasFilter = '7days';
 
         async function loadAdSpendData() {
@@ -1266,10 +1284,68 @@
                     (data.ad_spend || []).forEach(r => {
                         adSpendData[r.date] = { amount: parseFloat(r.amount) || 0, tax_rate: parseFloat(r.tax_rate) || 11 };
                     });
+                    // Load settings
+                    if (data.settings) {
+                        netProfitPerBook = parseInt(data.settings.net_profit_per_book) || 0;
+                        bepRoas = netProfitPerBook > 0 ? BOOK_PRICE / netProfitPerBook : 0;
+                        const profitInput = document.getElementById('net-profit-input');
+                        if (profitInput && netProfitPerBook > 0) {
+                            profitInput.value = netProfitPerBook.toLocaleString('id-ID');
+                        }
+                        updateBepHint();
+                    }
                 }
             } catch (e) { console.error('Load ad spend error:', e); }
             renderRoasTable();
         }
+
+        function updateBepHint() {
+            const hint = document.getElementById('bep-hint');
+            const bepCard = document.getElementById('roas-bep');
+            if (netProfitPerBook > 0) {
+                bepRoas = BOOK_PRICE / netProfitPerBook;
+                hint.textContent = `→ BEP ROAS = ${bepRoas.toFixed(2)}x (Harga ${formatRpFull(BOOK_PRICE)} ÷ Untung ${formatRpFull(netProfitPerBook)})`;
+                bepCard.textContent = bepRoas.toFixed(2) + 'x';
+            } else {
+                hint.textContent = 'Isi untuk menghitung BEP ROAS';
+                bepCard.textContent = '-';
+            }
+        }
+
+        async function saveNetProfit() {
+            const input = document.getElementById('net-profit-input');
+            const rawVal = input.value.replace(/[^0-9]/g, '');
+            const amount = parseInt(rawVal) || 0;
+            if (amount > 0) input.value = amount.toLocaleString('id-ID');
+            else input.value = '';
+
+            if (amount === netProfitPerBook) return;
+            netProfitPerBook = amount;
+            bepRoas = amount > 0 ? BOOK_PRICE / amount : 0;
+            updateBepHint();
+            renderRoasTable();
+
+            try {
+                await fetch('/api/ad-spend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionData.access_token}`
+                    },
+                    body: JSON.stringify({ _action: 'update_setting', key: 'net_profit_per_book', value: String(amount) })
+                });
+                showToast('Untung bersih tersimpan!');
+            } catch (e) { console.error('Save net profit error:', e); }
+        }
+
+        // Attach net profit input events
+        document.addEventListener('DOMContentLoaded', () => {
+            const npInput = document.getElementById('net-profit-input');
+            if (npInput) {
+                npInput.addEventListener('blur', saveNetProfit);
+                npInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); npInput.blur(); } });
+            }
+        });
 
         function setRoasFilter(type) {
             roasFilter = type;
@@ -1346,8 +1422,9 @@
                 const tax = spend * taxRate / 100;
                 const totalSpend = spend + tax;
                 const roas = totalSpend > 0 ? revenue / totalSpend : 0;
+                const netProfit = (qty * netProfitPerBook) - totalSpend;
 
-                days.push({ dateStr, date: new Date(d), dayName: HARI[d.getDay()], revenue, qty, spend, taxRate, tax, totalSpend, roas });
+                days.push({ dateStr, date: new Date(d), dayName: HARI[d.getDay()], revenue, qty, spend, taxRate, tax, totalSpend, roas, netProfit });
                 d.setDate(d.getDate() + 1);
             }
 
@@ -1361,26 +1438,32 @@
             const totTax = days.reduce((s, d) => s + d.tax, 0);
             const totQty = days.reduce((s, d) => s + d.qty, 0);
             const totRoas = totSpend > 0 ? totRevenue / totSpend : 0;
-            const totProfit = totRevenue - totSpend;
+            const totNetProfit = (totQty * netProfitPerBook) - totSpend;
 
             // Update summary cards
             document.getElementById('roas-revenue').textContent = formatRpFull(totRevenue);
             document.getElementById('roas-spend').textContent = formatRpFull(totSpend);
-            document.getElementById('roas-profit').textContent = formatRpFull(totProfit);
-            document.getElementById('roas-profit').className = 'roas-value ' + (totProfit >= 0 ? 'blue' : 'red');
+            document.getElementById('roas-profit').textContent = netProfitPerBook > 0 ? formatRpFull(totNetProfit) : formatRpFull(totRevenue - totSpend);
+            document.getElementById('roas-profit').className = 'roas-value ' + ((netProfitPerBook > 0 ? totNetProfit : totRevenue - totSpend) >= 0 ? 'blue' : 'red');
             document.getElementById('roas-total').textContent = totRoas > 0 ? totRoas.toFixed(2) + 'x' : '-';
 
             // Render rows
             tbody.innerHTML = '';
             if (days.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem;">Tidak ada data untuk periode ini.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:2rem;">Tidak ada data untuk periode ini.</td></tr>';
                 return;
             }
 
             days.forEach(day => {
                 const dateLabel = new Date(day.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                const roasClass = day.roas >= 2 ? 'good' : day.roas >= 1 ? 'ok' : day.spend > 0 ? 'bad' : 'na';
+                // Badge color: use BEP if set, else hardcoded thresholds
+                const roasThreshold = bepRoas > 0 ? bepRoas : 2;
+                const roasClass = day.roas >= roasThreshold ? 'good' : day.roas >= 1 ? 'ok' : day.spend > 0 ? 'bad' : 'na';
                 const roasText = day.spend > 0 ? day.roas.toFixed(2) + 'x' : '-';
+                // Net profit display
+                const npDisplay = (day.spend > 0 || day.qty > 0) && netProfitPerBook > 0
+                    ? `<span style="color: ${day.netProfit >= 0 ? 'var(--success)' : '#EF4444'}; font-weight:600; font-family:monospace;">${day.netProfit >= 0 ? '+' : ''}${formatRpFull(day.netProfit)}</span>`
+                    : '-';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1396,6 +1479,7 @@
                     </td>
                     <td style="text-align:right; font-family:monospace; color: var(--text-muted);">${day.spend > 0 ? formatRpFull(day.tax) : '-'}</td>
                     <td style="text-align:right; font-family:monospace; font-weight:600; color: #EF4444;">${day.spend > 0 ? formatRpFull(day.totalSpend) : '-'}</td>
+                    <td style="text-align:right;">${npDisplay}</td>
                     <td style="text-align:center;"><span class="roas-badge ${roasClass}">${roasText}</span></td>
                 `;
 
@@ -1418,7 +1502,11 @@
             // Total row
             const totalTr = document.createElement('tr');
             totalTr.className = 'total-row';
-            const totRoasClass = totRoas >= 2 ? 'good' : totRoas >= 1 ? 'ok' : totSpendRaw > 0 ? 'bad' : 'na';
+            const totRoasThreshold = bepRoas > 0 ? bepRoas : 2;
+            const totRoasClass = totRoas >= totRoasThreshold ? 'good' : totRoas >= 1 ? 'ok' : totSpendRaw > 0 ? 'bad' : 'na';
+            const totNpDisplay = netProfitPerBook > 0
+                ? `<span style="color: ${totNetProfit >= 0 ? 'var(--success)' : '#EF4444'};">${totNetProfit >= 0 ? '+' : ''}${formatRpFull(totNetProfit)}</span>`
+                : '-';
             totalTr.innerHTML = `
                 <td colspan="2"><strong>TOTAL</strong></td>
                 <td style="text-align:right; font-family:monospace; color: var(--success);">${formatRpFull(totRevenue)}</td>
@@ -1426,6 +1514,7 @@
                 <td style="font-family:monospace;">${formatRpFull(totSpendRaw)}</td>
                 <td style="text-align:right; font-family:monospace;">${formatRpFull(totTax)}</td>
                 <td style="text-align:right; font-family:monospace; color: #EF4444;">${formatRpFull(totSpend)}</td>
+                <td style="text-align:right; font-weight:700;">${totNpDisplay}</td>
                 <td style="text-align:center;"><span class="roas-badge ${totRoasClass}">${totSpendRaw > 0 ? totRoas.toFixed(2) + 'x' : '-'}</span></td>
             `;
             tbody.appendChild(totalTr);

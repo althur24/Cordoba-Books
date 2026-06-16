@@ -20,17 +20,26 @@ module.exports = async (req, res) => {
         return res.status(401).json({ error: 'Auth failed' });
     }
 
-    // GET: fetch all ad spend records
+    // GET: fetch ad spend + settings
     if (req.method === 'GET') {
         try {
-            const queryRes = await fetch(`${SUPABASE_URL}/rest/v1/ad_spend?order=date.desc`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            });
-            if (!queryRes.ok) {
-                return res.status(500).json({ error: 'Failed to fetch ad_spend', detail: await queryRes.text() });
-            }
-            const data = await queryRes.json();
-            return res.status(200).json({ ad_spend: data || [] });
+            const [spendRes, settingsRes] = await Promise.all([
+                fetch(`${SUPABASE_URL}/rest/v1/ad_spend?order=date.desc`, {
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                }),
+                fetch(`${SUPABASE_URL}/rest/v1/settings?select=key,value`, {
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                })
+            ]);
+            
+            const adSpend = spendRes.ok ? await spendRes.json() : [];
+            const settingsArr = settingsRes.ok ? await settingsRes.json() : [];
+            
+            // Convert settings array to object
+            const settings = {};
+            (settingsArr || []).forEach(s => { settings[s.key] = s.value; });
+            
+            return res.status(200).json({ ad_spend: adSpend || [], settings });
         } catch (e) {
             return res.status(500).json({ error: e.message });
         }
@@ -61,6 +70,31 @@ module.exports = async (req, res) => {
                 });
                 if (!patchRes.ok) {
                     return res.status(500).json({ error: 'Failed to update lead', detail: await patchRes.text() });
+                }
+                return res.status(200).json({ ok: true });
+            } catch (e) {
+                return res.status(500).json({ error: e.message });
+            }
+        }
+
+        // Action: update a setting
+        if (_action === 'update_setting') {
+            const { key, value } = req.body;
+            if (!key) return res.status(400).json({ error: 'key required' });
+            
+            try {
+                const upsertRes = await fetch(`${SUPABASE_URL}/rest/v1/settings?on_conflict=key`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify({ key, value: String(value), updated_at: new Date().toISOString() })
+                });
+                if (!upsertRes.ok) {
+                    return res.status(500).json({ error: 'Failed to save setting', detail: await upsertRes.text() });
                 }
                 return res.status(200).json({ ok: true });
             } catch (e) {
