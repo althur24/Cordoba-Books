@@ -1559,7 +1559,7 @@
 
         function updateRoasSummary() {
             const { from, to } = getRoasDateRange();
-            let totRevenue = 0, totSpend = 0, totSpendRaw = 0;
+            let totRevenue = 0, totSpend = 0, totSpendRaw = 0, totQty = 0;
             const d = new Date(from);
             while (d < to) {
                 const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -1570,6 +1570,7 @@
                     return ld >= dayStart && ld < dayEnd && l.status === 'purchased' && l.processed === true;
                 });
                 const qty = dayLeads.reduce((s, l) => s + (l.jumlah || 1), 0);
+                totQty += qty;
                 totRevenue += qty * BOOK_PRICE;
                 const spend = adSpendData[dateStr] ? adSpendData[dateStr].amount : 0;
                 const taxRate = adSpendData[dateStr] ? adSpendData[dateStr].tax_rate : 11;
@@ -1578,11 +1579,11 @@
                 d.setDate(d.getDate() + 1);
             }
             const totRoas = totSpend > 0 ? totRevenue / totSpend : 0;
-            const totProfit = totRevenue - totSpend;
+            const totNetProfit = (totQty * netProfitPerBook) - totSpend;
             document.getElementById('roas-revenue').textContent = formatRpFull(totRevenue);
             document.getElementById('roas-spend').textContent = formatRpFull(totSpend);
-            document.getElementById('roas-profit').textContent = formatRpFull(totProfit);
-            document.getElementById('roas-profit').className = 'roas-value ' + (totProfit >= 0 ? 'blue' : 'red');
+            document.getElementById('roas-profit').textContent = netProfitPerBook > 0 ? formatRpFull(totNetProfit) : formatRpFull(totRevenue - totSpend);
+            document.getElementById('roas-profit').className = 'roas-value ' + ((netProfitPerBook > 0 ? totNetProfit : totRevenue - totSpend) >= 0 ? 'blue' : 'red');
             document.getElementById('roas-total').textContent = totRoas > 0 ? totRoas.toFixed(2) + 'x' : '-';
         }
 
