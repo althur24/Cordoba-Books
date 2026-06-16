@@ -258,7 +258,6 @@ function initPromoTimer() {
     const minutesEl = document.getElementById('cd-minutes');
     const secondsEl = document.getElementById('cd-seconds');
     const promoSection = document.getElementById('promo');
-    const originalPriceLabel = document.querySelector('.price-original');
     
     if (!hoursEl || !promoSection) return;
 
