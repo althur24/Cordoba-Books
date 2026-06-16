@@ -331,4 +331,86 @@ if (document.getElementById('promo-timer')) {
     });
 })();
 
+// ============================================
+// 8. SOCIAL PROOF POPUP
+// ============================================
+(function() {
+    const NAMES = [
+        'Suryani', 'Haryanto', 'Endang', 'Bambang', 'Sri Wahyuni', 'Agung',
+        'Tutik', 'Sugeng', 'Yanti', 'Supriadi', 'Ningsih', 'Mulyono',
+        'Suhartini', 'Joko', 'Rusmiati', 'Slamet', 'Wati', 'Sunarto',
+        'Hartati', 'Budi Santoso', 'Sumiyati', 'Darmo', 'Mariani', 'Tono',
+        'Umi Kalsum', 'Wahyudi', 'Nurhasanah', 'Suroto', 'Tri Handayani', 'Poniman',
+        'Kartini', 'Suparman', 'Rini Astuti', 'Mugiyono', 'Siti Aminah', 'Sutrisno'
+    ];
+    const CITIES = [
+        'Jakarta', 'Surabaya', 'Bandung', 'Medan', 'Semarang', 'Yogyakarta',
+        'Makassar', 'Palembang', 'Bekasi', 'Tangerang', 'Depok', 'Bogor',
+        'Malang', 'Solo', 'Denpasar', 'Batam', 'Pekanbaru', 'Banjarmasin',
+        'Lampung', 'Cirebon', 'Pontianak', 'Padang', 'Manado', 'Jambi'
+    ];
+
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+    let popup = null;
+    let hideTimeout = null;
+    let dismissed = false;
+
+    function createPopup() {
+        popup = document.createElement('div');
+        popup.className = 'social-proof';
+        popup.innerHTML = `
+            <div class="social-proof-icon">📦</div>
+            <div class="social-proof-text">
+                <div class="social-proof-name"></div>
+                <div class="social-proof-detail"></div>
+            </div>
+            <button class="social-proof-close" aria-label="Tutup">&times;</button>
+        `;
+        popup.querySelector('.social-proof-close').addEventListener('click', function() {
+            popup.classList.remove('show');
+            dismissed = true;
+        });
+        document.body.appendChild(popup);
+    }
+
+    function showNotification() {
+        if (dismissed || !popup) return;
+
+        const name = pick(NAMES);
+        const city = pick(CITIES);
+        const qty = randInt(1, 3);
+        const mins = randInt(1, 10);
+        const timeText = mins <= 2 ? 'baru saja' : mins + ' menit lalu';
+
+        popup.querySelector('.social-proof-name').innerHTML =
+            '<strong>' + name + '</strong> dari <strong>' + city + '</strong>';
+        popup.querySelector('.social-proof-detail').textContent =
+            'membeli ' + qty + ' buku · ' + timeText;
+
+        popup.classList.add('show');
+
+        clearTimeout(hideTimeout);
+        hideTimeout = setTimeout(function() {
+            popup.classList.remove('show');
+        }, 4000);
+    }
+
+    function scheduleNext() {
+        var delay = randInt(8, 12) * 1000;
+        setTimeout(function() {
+            showNotification();
+            if (!dismissed) scheduleNext();
+        }, delay);
+    }
+
+    // Start after 5 seconds
+    setTimeout(function() {
+        createPopup();
+        showNotification();
+        scheduleNext();
+    }, 5000);
+})();
+
 });
