@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Base prices
     const BOOK_PRICE = 149000;
-    const ORIGINAL_PRICE = 210000;
+    const ORIGINAL_PRICE = 249000;
 
     // Format currency to Rp XX.XXX
     function formatRupiah(number) {
