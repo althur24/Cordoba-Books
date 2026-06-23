@@ -590,7 +590,6 @@ ul {
     right: 1.5rem;
     left: auto;
     transform: none;
-    font-size: 8rem;
     color: var(--gold-accent);
     opacity: 0.1;
     z-index: 0;
@@ -1011,11 +1010,11 @@ ul {
     text-align: left;
 }
 
-.accordion-header i {
+.accordion-header svg {
     transition: transform var(--transition-fast);
 }
 
-.accordion-item.active .accordion-header i {
+.accordion-item.active .accordion-header svg {
     transform: rotate(180deg);
 }
 
