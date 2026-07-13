@@ -54,9 +54,16 @@ module.exports = async (req, res) => {
 
         const lead = leads[0];
 
-        // 3. Prevent downgrade: can't go from purchased back to form_submitted
-        if (lead.status === 'purchased' && newStatus !== 'purchased') {
-            return res.status(400).json({ error: 'Cannot change status from purchased' });
+        // 3. Status transition rules
+        const allowedTransitions = {
+            'form_submitted': ['wa_confirmed', 'purchased'],
+            'wa_confirmed': ['purchased'],
+            'purchased': ['cancelled'],
+            'cancelled': ['purchased']
+        };
+        const allowed = allowedTransitions[lead.status] || [];
+        if (!allowed.includes(newStatus)) {
+            return res.status(400).json({ error: `Cannot change status from '${lead.status}' to '${newStatus}'` });
         }
 
         // 4. Build update payload
@@ -70,6 +77,10 @@ module.exports = async (req, res) => {
         if (newStatus === 'purchased') {
             updateData.purchased = true;
             updateData.purchased_at = new Date().toISOString();
+        }
+
+        if (newStatus === 'cancelled') {
+            updateData.cancelled_at = new Date().toISOString();
         }
 
         // 5. Update in Supabase

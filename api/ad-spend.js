@@ -49,15 +49,16 @@ module.exports = async (req, res) => {
     if (req.method === 'POST') {
         const { _action } = req.body;
         
-        // Action: update lead processed checkbox
+        // Action: update lead processed checkbox + payment method
         if (_action === 'update_processed') {
-            const { leadId, processed } = req.body;
+            const { leadId, processed, payment_method } = req.body;
             if (!leadId) return res.status(400).json({ error: 'leadId required' });
             
             try {
                 const updateData = { 
                     processed: processed === true,
-                    processed_at: processed ? new Date().toISOString() : null
+                    processed_at: processed ? new Date().toISOString() : null,
+                    payment_method: processed ? (payment_method || null) : null
                 };
                 const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/leads?id=eq.${leadId}`, {
                     method: 'PATCH',

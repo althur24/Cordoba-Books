@@ -228,9 +228,40 @@
         .btn-sm.btn-followup { border-color: #FCD34D; color: #D97706; background: #FEF3C7; }
         .btn-sm.btn-followup:hover { background: #FDE68A; border-color: #F59E0B; color: #B45309; }
         
+        .btn-sm.btn-cancel { border-color: #FCA5A5; color: #DC2626; background: #FEF2F2; }
+        .btn-sm.btn-cancel:hover { background: #FEE2E2; border-color: #EF4444; color: #B91C1C; }
+        
         .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
+        .badge-danger { background: #FEE2E2; color: #DC2626; }
+
         .process-time { display: block; font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; text-align: center; }
+
+        .process-cell { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+        .process-btns { display: flex; gap: 0.3rem; }
+        .btn-method {
+            padding: 0.25rem 0.5rem; border-radius: 0.4rem; font-size: 0.65rem;
+            font-weight: 700; border: 1px solid var(--border); background: white;
+            cursor: pointer; transition: all 0.2s; white-space: nowrap;
+        }
+        .btn-method:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-method.cod { border-color: #34D399; color: #047857; }
+        .btn-method.cod:hover { background: #ECFDF5; }
+        .btn-method.tf { border-color: #93C5FD; color: #1D4ED8; }
+        .btn-method.tf:hover { background: #EFF6FF; }
+        .method-badge {
+            display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.2rem 0.5rem;
+            border-radius: 0.4rem; font-size: 0.7rem; font-weight: 700; cursor: pointer;
+            transition: all 0.2s; border: 1px solid transparent;
+        }
+        .method-badge:hover { opacity: 0.8; }
+        .method-badge.cod { background: #D1FAE5; color: #047857; border-color: #34D399; }
+        .method-badge.tf { background: #DBEAFE; color: #1D4ED8; border-color: #93C5FD; }
+        .btn-reset-process {
+            background: none; border: none; cursor: pointer; font-size: 0.7rem;
+            color: #9CA3AF; padding: 0; line-height: 1; transition: color 0.2s;
+        }
+        .btn-reset-process:hover { color: #EF4444; }
 
         /* Password Modal */
         .modal {
@@ -994,6 +1025,8 @@
                     statusBadge = '<span class="badge badge-info">💬 WA Confirmed</span>';
                 } else if (lead.status === 'purchased') {
                     statusBadge = '<span class="badge badge-success">✅ Purchased</span>';
+                } else if (lead.status === 'cancelled') {
+                    statusBadge = '<span class="badge badge-danger">🚫 Cancelled</span>';
                 }
 
                 // Action buttons based on current status
@@ -1006,6 +1039,14 @@
                         <button class="btn-sm btn-purchase" data-lead-id="${lead.id}" data-new-status="purchased">✅ Purchase</button>
                     `;
                 } else if (lead.status === 'wa_confirmed') {
+                    actionBtns = `
+                        <button class="btn-sm btn-purchase" data-lead-id="${lead.id}" data-new-status="purchased">✅ Purchase</button>
+                    `;
+                } else if (lead.status === 'purchased') {
+                    actionBtns = `
+                        <button class="btn-sm btn-cancel" data-lead-id="${lead.id}" data-new-status="cancelled">🚫 Cancel</button>
+                    `;
+                } else if (lead.status === 'cancelled') {
                     actionBtns = `
                         <button class="btn-sm btn-purchase" data-lead-id="${lead.id}" data-new-status="purchased">✅ Purchase</button>
                     `;
@@ -1045,8 +1086,7 @@
                         <div class="status-actions">${actionBtns}</div>
                     </td>
                     <td style="text-align: center; vertical-align: middle;">
-                        <input type="checkbox" class="process-check" data-id="${lead.id}" style="width: 1.25rem; height: 1.25rem; cursor: pointer;">
-                        <span class="process-time" id="ptime-${lead.id}"></span>
+                        <div class="process-cell" id="pcell-${lead.id}"></div>
                     </td>
                 `;
 
@@ -1062,44 +1102,8 @@
                     btn.addEventListener('click', () => copyFollowUp(btn.dataset.fuId));
                 });
                 
-                // Set initial checkbox state from database
-                const checkbox = tr.querySelector('.process-check');
-                checkbox.checked = lead.processed === true;
-                
-                const ptime = tr.querySelector(`#ptime-${lead.id}`);
-                if (lead.processed && lead.processed_at) {
-                    const pd = new Date(lead.processed_at);
-                    ptime.textContent = pd.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ',');
-                }
-                
-                // Add event listener to save state to database
-                checkbox.addEventListener('change', async (e) => {
-                    const checked = e.target.checked;
-                    try {
-                        const nowStr = new Date().toISOString();
-                        await fetch(`/api/ad-spend`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${sessionData.access_token}`
-                            },
-                            body: JSON.stringify({ _action: 'update_processed', leadId: lead.id, processed: checked })
-                        });
-                        // Update local data
-                        lead.processed = checked;
-                        lead.processed_at = checked ? nowStr : null;
-                        
-                        if (checked) {
-                            const pd = new Date(nowStr);
-                            ptime.textContent = pd.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ',');
-                        } else {
-                            ptime.textContent = '';
-                        }
-                    } catch (err) {
-                        console.error('Failed to update processed:', err);
-                        e.target.checked = !checked; // revert on error
-                    }
-                });
+                // Render process cell (COD/TF buttons or badge)
+                renderProcessCell(lead);
 
                 tbody.appendChild(tr);
             });
@@ -1112,14 +1116,173 @@
             }
         }
 
+        // === PROCESS CELL (COD/TF) ===
+        function formatProcessTime(isoStr) {
+            const pd = new Date(isoStr);
+            return pd.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ',');
+        }
+
+        function renderProcessCell(lead) {
+            const cell = document.getElementById(`pcell-${lead.id}`);
+            if (!cell) return;
+            cell.innerHTML = '';
+
+            if (lead.processed && lead.payment_method) {
+                // STATE 1: Fully processed with payment method
+                const isCod = lead.payment_method === 'COD';
+                const badge = document.createElement('span');
+                badge.className = `method-badge ${isCod ? 'cod' : 'tf'}`;
+                badge.innerHTML = isCod ? '💵 COD' : '🏦 TF';
+                badge.title = 'Klik untuk ganti metode';
+                badge.addEventListener('click', () => toggleMethod(lead));
+
+                const resetBtn = document.createElement('button');
+                resetBtn.className = 'btn-reset-process';
+                resetBtn.innerHTML = '❌';
+                resetBtn.title = 'Reset proses';
+                resetBtn.addEventListener('click', () => unprocessLead(lead));
+
+                const row = document.createElement('div');
+                row.style.cssText = 'display: flex; align-items: center; gap: 0.3rem;';
+                row.appendChild(badge);
+                row.appendChild(resetBtn);
+                cell.appendChild(row);
+
+                if (lead.processed_at) {
+                    const time = document.createElement('span');
+                    time.className = 'process-time';
+                    time.textContent = formatProcessTime(lead.processed_at);
+                    cell.appendChild(time);
+                }
+            } else if (lead.processed && !lead.payment_method) {
+                // STATE 2: Legacy — already checked but no method assigned yet
+                const label = document.createElement('span');
+                label.style.cssText = 'font-size: 0.7rem; color: var(--success); font-weight: 600;';
+                label.textContent = '✅ Diproses';
+                cell.appendChild(label);
+
+                if (lead.processed_at) {
+                    const time = document.createElement('span');
+                    time.className = 'process-time';
+                    time.textContent = formatProcessTime(lead.processed_at);
+                    cell.appendChild(time);
+                }
+
+                // Show COD/TF buttons below to assign method
+                const hint = document.createElement('span');
+                hint.style.cssText = 'font-size: 0.6rem; color: var(--text-muted); margin-top: 0.15rem;';
+                hint.textContent = 'Pilih metode:';
+                cell.appendChild(hint);
+
+                const btnsDiv = document.createElement('div');
+                btnsDiv.className = 'process-btns';
+                const codBtn = document.createElement('button');
+                codBtn.className = 'btn-method cod';
+                codBtn.textContent = 'COD';
+                codBtn.addEventListener('click', () => processLead(lead, 'COD'));
+                const tfBtn = document.createElement('button');
+                tfBtn.className = 'btn-method tf';
+                tfBtn.textContent = 'TF';
+                tfBtn.addEventListener('click', () => processLead(lead, 'TF'));
+                btnsDiv.appendChild(codBtn);
+                btnsDiv.appendChild(tfBtn);
+                cell.appendChild(btnsDiv);
+            } else {
+                // STATE 3: Not processed yet
+                const btnsDiv = document.createElement('div');
+                btnsDiv.className = 'process-btns';
+
+                const codBtn = document.createElement('button');
+                codBtn.className = 'btn-method cod';
+                codBtn.textContent = 'COD';
+                codBtn.addEventListener('click', () => processLead(lead, 'COD'));
+
+                const tfBtn = document.createElement('button');
+                tfBtn.className = 'btn-method tf';
+                tfBtn.textContent = 'TF';
+                tfBtn.addEventListener('click', () => processLead(lead, 'TF'));
+
+                btnsDiv.appendChild(codBtn);
+                btnsDiv.appendChild(tfBtn);
+                cell.appendChild(btnsDiv);
+            }
+        }
+
+        async function processLead(lead, method) {
+            try {
+                const nowStr = new Date().toISOString();
+                const res = await fetch('/api/ad-spend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionData.access_token}`
+                    },
+                    body: JSON.stringify({ _action: 'update_processed', leadId: lead.id, processed: true, payment_method: method })
+                });
+                if (!res.ok) throw new Error('Failed');
+                lead.processed = true;
+                lead.processed_at = nowStr;
+                lead.payment_method = method;
+                renderProcessCell(lead);
+                showToast(`Diproses sebagai ${method}`);
+            } catch (err) {
+                console.error('processLead error:', err);
+                showToast('Gagal menyimpan, coba lagi');
+            }
+        }
+
+        async function toggleMethod(lead) {
+            const newMethod = lead.payment_method === 'COD' ? 'TF' : 'COD';
+            try {
+                const res = await fetch('/api/ad-spend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionData.access_token}`
+                    },
+                    body: JSON.stringify({ _action: 'update_processed', leadId: lead.id, processed: true, payment_method: newMethod })
+                });
+                if (!res.ok) throw new Error('Failed');
+                lead.payment_method = newMethod;
+                renderProcessCell(lead);
+                showToast(`Metode diubah ke ${newMethod}`);
+            } catch (err) {
+                console.error('toggleMethod error:', err);
+                showToast('Gagal mengubah metode');
+            }
+        }
+
+        async function unprocessLead(lead) {
+            try {
+                const res = await fetch('/api/ad-spend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionData.access_token}`
+                    },
+                    body: JSON.stringify({ _action: 'update_processed', leadId: lead.id, processed: false, payment_method: null })
+                });
+                if (!res.ok) throw new Error('Failed');
+                lead.processed = false;
+                lead.processed_at = null;
+                lead.payment_method = null;
+                renderProcessCell(lead);
+                showToast('Proses direset');
+            } catch (err) {
+                console.error('unprocessLead error:', err);
+                showToast('Gagal mereset proses');
+            }
+        }
+
         function updateStats(leads) {
-            const total = leads.length;
+            const total = leads.filter(l => l.status !== 'cancelled').length;
             const wa = leads.filter(l => l.status === 'wa_confirmed' || l.status === 'purchased').length;
             const purchased = leads.filter(l => l.status === 'purchased').length;
+            const cancelled = leads.filter(l => l.status === 'cancelled').length;
             
             document.getElementById('stat-leads').innerText = total;
             document.getElementById('stat-wa').innerText = wa;
-            document.getElementById('stat-purchased').innerText = purchased;
+            document.getElementById('stat-purchased').innerText = purchased + (cancelled > 0 ? ` (${cancelled} cancel)` : '');
             
             const conv = total > 0 ? Math.round((purchased / total) * 100) : 0;
             document.getElementById('stat-conv').innerText = `${conv}%`;
@@ -1240,10 +1403,17 @@
         async function updateLeadStatus(leadId, newStatus, btn) {
             if (!sessionData) return;
 
-            const statusLabels = { 'wa_confirmed': 'WA Confirmed', 'purchased': 'Purchased' };
+            const statusLabels = { 'wa_confirmed': 'WA Confirmed', 'purchased': 'Purchased', 'cancelled': 'Cancelled' };
             const label = statusLabels[newStatus] || newStatus;
 
-            if (!confirm(`Ubah status lead ini menjadi "${label}"?\n\nJika purchased, event Purchase juga akan dikirim ke Facebook & GA.`)) {
+            let confirmMsg = `Ubah status lead ini menjadi "${label}"?`;
+            if (newStatus === 'purchased') {
+                confirmMsg += '\n\nEvent Purchase akan dikirim ke Facebook & GA.';
+            } else if (newStatus === 'cancelled') {
+                confirmMsg += '\n\nStatus ini TIDAK akan men-trigger event ke Meta/GA.';
+            }
+
+            if (!confirm(confirmMsg)) {
                 return;
             }
 
