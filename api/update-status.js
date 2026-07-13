@@ -79,9 +79,7 @@ module.exports = async (req, res) => {
             updateData.purchased_at = new Date().toISOString();
         }
 
-        if (newStatus === 'cancelled') {
-            updateData.cancelled_at = new Date().toISOString();
-        }
+        // Note: cancelled status is tracked by the status field itself
 
         // 5. Update in Supabase
         const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/leads?id=eq.${leadId}`, {
