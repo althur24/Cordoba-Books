@@ -1128,6 +1128,12 @@
             if (!cell) return;
             cell.innerHTML = '';
 
+            // Only show process options for purchased or cancelled leads
+            if (lead.status !== 'purchased' && lead.status !== 'cancelled') {
+                cell.innerHTML = '<span style="color: var(--text-muted); font-size: 0.75rem;">—</span>';
+                return;
+            }
+
             if (lead.processed && lead.payment_method) {
                 // STATE 1: Fully processed with payment method
                 const isCod = lead.payment_method === 'COD';
