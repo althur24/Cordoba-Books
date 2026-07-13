@@ -225,7 +225,12 @@
         .btn-sm.btn-confirm { border-color: #93C5FD; color: #1D4ED8; background: #EFF6FF; }
         .btn-sm.btn-confirm:hover { background: #DBEAFE; border-color: #3B82F6; color: #1E40AF; }
         
+        .btn-sm.btn-followup { border-color: #FCD34D; color: #D97706; background: #FEF3C7; }
+        .btn-sm.btn-followup:hover { background: #FDE68A; border-color: #F59E0B; color: #B45309; }
+        
         .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .process-time { display: block; font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; text-align: center; }
 
         /* Password Modal */
         .modal {
@@ -798,6 +803,7 @@
         let currentDisplayCount = 10;
         let currentFilter = 'all';
         let searchQuery = '';
+        let leadDataMap = {}; // Safe storage for lead data (avoids HTML attribute escaping issues)
 
         function handleSearch() {
             const input = document.getElementById('search-input');
@@ -948,6 +954,9 @@
                 return;
             }
 
+            // Reset data map for this render cycle
+            leadDataMap = {};
+
             // Get subset for pagination
             const displayLeads = filteredLeads.slice(0, currentDisplayCount);
             
@@ -990,7 +999,9 @@
                 // Action buttons based on current status
                 let actionBtns = '';
                 if (lead.status === 'form_submitted') {
+                    leadDataMap[lead.id] = { nama: lead.nama, alamat: lead.alamat };
                     actionBtns = `
+                        <button class="btn-sm btn-followup" data-fu-id="${lead.id}">📝 Copy FU</button>
                         <button class="btn-sm btn-confirm" data-lead-id="${lead.id}" data-new-status="wa_confirmed">💬 Confirm</button>
                         <button class="btn-sm btn-purchase" data-lead-id="${lead.id}" data-new-status="purchased">✅ Purchase</button>
                     `;
@@ -1035,6 +1046,7 @@
                     </td>
                     <td style="text-align: center; vertical-align: middle;">
                         <input type="checkbox" class="process-check" data-id="${lead.id}" style="width: 1.25rem; height: 1.25rem; cursor: pointer;">
+                        <span class="process-time" id="ptime-${lead.id}"></span>
                     </td>
                 `;
 
@@ -1046,14 +1058,25 @@
                     btn.addEventListener('click', () => updateLeadStatus(btn.dataset.leadId, btn.dataset.newStatus, btn));
                 });
                 
+                tr.querySelectorAll('.btn-sm[data-fu-id]').forEach(btn => {
+                    btn.addEventListener('click', () => copyFollowUp(btn.dataset.fuId));
+                });
+                
                 // Set initial checkbox state from database
                 const checkbox = tr.querySelector('.process-check');
                 checkbox.checked = lead.processed === true;
+                
+                const ptime = tr.querySelector(`#ptime-${lead.id}`);
+                if (lead.processed && lead.processed_at) {
+                    const pd = new Date(lead.processed_at);
+                    ptime.textContent = pd.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ',');
+                }
                 
                 // Add event listener to save state to database
                 checkbox.addEventListener('change', async (e) => {
                     const checked = e.target.checked;
                     try {
+                        const nowStr = new Date().toISOString();
                         await fetch(`/api/ad-spend`, {
                             method: 'POST',
                             headers: {
@@ -1064,7 +1087,14 @@
                         });
                         // Update local data
                         lead.processed = checked;
-                        lead.processed_at = checked ? new Date().toISOString() : null;
+                        lead.processed_at = checked ? nowStr : null;
+                        
+                        if (checked) {
+                            const pd = new Date(nowStr);
+                            ptime.textContent = pd.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(' pukul', ',');
+                        } else {
+                            ptime.textContent = '';
+                        }
                     } catch (err) {
                         console.error('Failed to update processed:', err);
                         e.target.checked = !checked; // revert on error
@@ -1244,6 +1274,33 @@
                 btn.disabled = false;
                 btn.textContent = label;
             }
+        }
+
+        // === COPY FOLLOW UP ===
+        function copyFollowUp(leadId) {
+            const data = leadDataMap[leadId];
+            if (!data) { showToast('Data lead tidak ditemukan'); return; }
+            const template = `Halo ka ${data.nama}, untuk pemesanan Buku Food and Life Balancing ala Nabi dengan alamat pengiriman:
+
+${data.alamat}
+
+Akan segera saya proses menggunakan COD ya ka, jadi bayarnya saat barang sampai di rumah kakak.
+
+Kakak sudah mendapatkan gratis ongkir, dan harga promo Rp149.000 ya.
+
+Terima kasih sudah order bukunya ya ka 😊🙏`;
+
+            navigator.clipboard.writeText(template).then(() => {
+                showToast('Template follow up berhasil disalin!');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = template;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('Template follow up berhasil disalin!');
+            });
         }
 
         // =============================================
