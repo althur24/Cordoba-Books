@@ -1102,10 +1102,11 @@
                     btn.addEventListener('click', () => copyFollowUp(btn.dataset.fuId));
                 });
                 
+                // Append row to table first (must be in DOM before renderProcessCell)
+                tbody.appendChild(tr);
+                
                 // Render process cell (COD/TF buttons or badge)
                 renderProcessCell(lead);
-
-                tbody.appendChild(tr);
             });
         }
         
