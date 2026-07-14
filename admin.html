@@ -881,42 +881,47 @@
             const now = new Date();
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             
-            if (currentFilter === 'all') {
+            // When "Diproses" is checked, filter by processed_at date instead of created_at
+            const dateField = filterProcessed ? 'processed_at' : 'created_at';
+            
+            if (filterProcessed) {
+                // Start with only processed leads
+                filteredLeads = allLeads.filter(l => l.processed === true && l[dateField]);
+            } else {
                 filteredLeads = [...allLeads];
+            }
+            
+            if (currentFilter === 'all') {
+                // no additional date filter
             } else if (currentFilter === 'today') {
-                filteredLeads = allLeads.filter(l => new Date(l.created_at) >= todayStart);
+                filteredLeads = filteredLeads.filter(l => new Date(l[dateField]) >= todayStart);
             } else if (currentFilter === 'yesterday') {
                 const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-                filteredLeads = allLeads.filter(l => { const d = new Date(l.created_at); return d >= yesterdayStart && d < todayStart; });
+                filteredLeads = filteredLeads.filter(l => { const d = new Date(l[dateField]); return d >= yesterdayStart && d < todayStart; });
             } else if (currentFilter === '7days') {
                 const weekAgo = new Date(todayStart); weekAgo.setDate(weekAgo.getDate() - 7);
-                filteredLeads = allLeads.filter(l => new Date(l.created_at) >= weekAgo);
+                filteredLeads = filteredLeads.filter(l => new Date(l[dateField]) >= weekAgo);
             } else if (currentFilter === '30days') {
                 const monthAgo = new Date(todayStart); monthAgo.setDate(monthAgo.getDate() - 30);
-                filteredLeads = allLeads.filter(l => new Date(l.created_at) >= monthAgo);
+                filteredLeads = filteredLeads.filter(l => new Date(l[dateField]) >= monthAgo);
             } else if (currentFilter === 'custom') {
                 const fromVal = document.getElementById('filter-date-from').value;
                 const toVal = document.getElementById('filter-date-to').value;
                 if (fromVal) {
-                    // Parse as LOCAL time (WIB), not UTC
                     const [fy, fm, fd] = fromVal.split('-').map(Number);
-                    const from = new Date(fy, fm - 1, fd); // Local midnight
-                    
+                    const from = new Date(fy, fm - 1, fd);
                     let to;
                     if (toVal) {
                         const [ty, tm, td] = toVal.split('-').map(Number);
-                        to = new Date(ty, tm - 1, td + 1); // Next day local midnight
+                        to = new Date(ty, tm - 1, td + 1);
                     } else {
-                        to = new Date(fy, fm - 1, fd + 1); // Next day local midnight
+                        to = new Date(fy, fm - 1, fd + 1);
                     }
-                    
-                    filteredLeads = allLeads.filter(l => { const d = new Date(l.created_at); return d >= from && d < to; });
-                } else {
-                    filteredLeads = [...allLeads];
+                    filteredLeads = filteredLeads.filter(l => { const d = new Date(l[dateField]); return d >= from && d < to; });
                 }
             }
             
-            // Apply search filter on top of date filter
+            // Apply search filter on top
             if (searchQuery) {
                 filteredLeads = filteredLeads.filter(l => {
                     const nama = (l.nama || '').toLowerCase();
@@ -924,11 +929,6 @@
                     const code = (l.short_code || '').toLowerCase();
                     return nama.includes(searchQuery) || wa.includes(searchQuery) || code.includes(searchQuery);
                 });
-            }
-
-            // Apply processed filter
-            if (filterProcessed) {
-                filteredLeads = filteredLeads.filter(l => l.processed === true);
             }
 
             // Update counter
