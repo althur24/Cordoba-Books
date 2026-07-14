@@ -1509,6 +1509,18 @@ Terima kasih sudah order bukunya ya ka 😊🙏`;
                 document.querySelectorAll('.tab-btn')[0].classList.add('active');
                 document.getElementById('tab-leads').classList.add('active');
             } else {
+                // Password gate for ROAS tab
+                if (!sessionStorage.getItem('roas_unlocked')) {
+                    const pwd = prompt('Masukkan password untuk akses ROAS:');
+                    if (pwd !== 'roas123') {
+                        showToast('Password salah!');
+                        // Stay on leads tab
+                        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                        document.getElementById('tab-leads').classList.add('active');
+                        return;
+                    }
+                    sessionStorage.setItem('roas_unlocked', 'true');
+                }
                 document.querySelectorAll('.tab-btn')[1].classList.add('active');
                 document.getElementById('tab-roas').classList.add('active');
                 loadAdSpendData();
